@@ -1,0 +1,205 @@
+"""
+Модуль для работы с Ozon Seller API
+"""
+
+import requests
+import logging
+from datetime import datetime, timedelta
+from typing import Dict, List, Any, Optional
+from config import OZON_API_KEY, OZON_CLIENT_ID, logger
+
+class OzonAPI:
+    """Класс для работы с Ozon Seller API"""
+    
+    def __init__(self):
+        self.api_key = OZON_API_KEY
+        self.client_id = OZON_CLIENT_ID
+        self.base_url = "https://api-seller.ozon.ru"
+        self.headers = {
+            "Client-Id": self.client_id,
+            "Api-Key": self.api_key,
+            "Content-Type": "application/json"
+        }
+    
+    def _make_request(self, endpoint: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Выполняет запрос к Ozon API
+        """
+        try:
+            url = f"{self.base_url}{endpoint}"
+            response = requests.post(url, headers=self.headers, json=data)
+            response.raise_for_status()
+            
+            result = response.json()
+            if result.get("result"):
+                return result["result"]
+            else:
+                logger.error(f"API вернул ошибку: {result}")
+                return None
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Ошибка при запросе к Ozon API: {e}")
+            return None
+    
+    def get_products(self) -> List[Dict[str, Any]]:
+        """
+        Получает список всех товаров
+        """
+        logger.info("Получение списка товаров...")
+        
+        endpoint = "/v2/product/list"
+        data = {
+            "limit": 1000,
+            "offset": 0
+        }
+        
+        products = []
+        offset = 0
+        
+        while True:
+            data["offset"] = offset
+            result = self._make_request(endpoint, data)
+            
+            if not result or "items" not in result:
+                break
+                
+            products.extend(result["items"])
+            
+            if len(result["items"]) < 1000:
+                break
+                
+            offset += 1000
+        
+        logger.info(f"Получено {len(products)} товаров")
+        return products
+    
+    def get_sales_data(self, days: int = 90) -> List[Dict[str, Any]]:
+        """
+        Получает данные о продажах за указанное количество дней
+        """
+        logger.info(f"Получение данных о продажах за {days} дней...")
+        
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+        
+        endpoint = "/v3/product/sales"
+        data = {
+            "date_from": start_date.strftime("%Y-%m-%d"),
+            "date_to": end_date.strftime("%Y-%m-%d"),
+            "limit": 1000,
+            "offset": 0
+        }
+        
+        sales_data = []
+        offset = 0
+        
+        while True:
+            data["offset"] = offset
+            result = self._make_request(endpoint, data)
+            
+            if not result or "items" not in result:
+                break
+                
+            sales_data.extend(result["items"])
+            
+            if len(result["items"]) < 1000:
+                break
+                
+            offset += 1000
+        
+        logger.info(f"Получено {len(sales_data)} записей о продажах")
+        return sales_data
+    
+    def get_stocks_data(self) -> List[Dict[str, Any]]:
+        """
+        Получает данные об остатках товаров
+        """
+        logger.info("Получение данных об остатках...")
+        
+        endpoint = "/v3/product/info/stocks"
+        data = {
+            "limit": 1000,
+            "offset": 0
+        }
+        
+        stocks_data = []
+        offset = 0
+        
+        while True:
+            data["offset"] = offset
+            result = self._make_request(endpoint, data)
+            
+            if not result or "items" not in result:
+                break
+                
+            stocks_data.extend(result["items"])
+            
+            if len(result["items"]) < 1000:
+                break
+                
+            offset += 1000
+        
+        logger.info(f"Получено {len(stocks_data)} записей об остатках")
+        return stocks_data
+    
+    def get_product_info(self, product_ids: List[int]) -> List[Dict[str, Any]]:
+        """
+        Получает детальную информацию о товарах
+        """
+        logger.info(f"Получение информации о {len(product_ids)} товарах...")
+        
+        endpoint = "/v2/product/info/list"
+        data = {
+            "offer_id": "",
+            "product_id": product_ids,
+            "sku": 0
+        }
+        
+        result = self._make_request(endpoint, data)
+        
+        if result and "items" in result:
+            logger.info(f"Получена информация о {len(result['items'])} товарах")
+            return result["items"]
+        
+        return []
+    
+    def get_analytics_data(self, days: int = 90) -> List[Dict[str, Any]]:
+        """
+        Получает аналитические данные о продажах
+        """
+        logger.info(f"Получение аналитических данных за {days} дней...")
+        
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+        
+        endpoint = "/v1/analytics/data"
+        data = {
+            "date_from": start_date.strftime("%Y-%m-%d"),
+            "date_to": end_date.strftime("%Y-%m-%d"),
+            "metrics": ["revenue", "orders", "views"],
+            "dimension": ["day", "sku"],
+            "filters": [],
+            "sort": [{"key": "day", "order": "ASC"}],
+            "limit": 1000,
+            "offset": 0
+        }
+        
+        analytics_data = []
+        offset = 0
+        
+        while True:
+            data["offset"] = offset
+            result = self._make_request(endpoint, data)
+            
+            if not result or "data" not in result:
+                break
+                
+            analytics_data.extend(result["data"])
+            
+            if len(result["data"]) < 1000:
+                break
+                
+            offset += 1000
+        
+        logger.info(f"Получено {len(analytics_data)} записей аналитических данных")
+        return analytics_data 

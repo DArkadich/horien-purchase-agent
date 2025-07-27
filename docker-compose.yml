@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  horien-purchase-agent:
+    build: .
+    container_name: horien-purchase-agent
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    restart: "no" 
