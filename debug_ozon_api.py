@@ -1,4 +1,4 @@
-т #!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Детальный тест Ozon API - показывает что возвращает каждый эндпоинт
 """
@@ -131,6 +131,38 @@ def debug_ozon_api():
             "endpoint": "/v3/product/info/list",
             "data": {
                 "product_id": [2119951820, 2119951824, 2119951828]
+            }
+        },
+        {
+            "name": "Отчёт об остатках (v1)",
+            "endpoint": "/v1/report/list",
+            "data": {
+                "report_type": "SELLER_STOCK",
+                "page_size": 100
+            }
+        },
+        {
+            "name": "Заказы (v1) - альтернативный",
+            "endpoint": "/v1/order/list",
+            "data": {
+                "limit": 10,
+                "offset": 0
+            }
+        },
+        {
+            "name": "Заказы (v2) - альтернативный",
+            "endpoint": "/v2/order/list",
+            "data": {
+                "limit": 10,
+                "offset": 0
+            }
+        },
+        {
+            "name": "Отчёт о заказах",
+            "endpoint": "/v1/report/list",
+            "data": {
+                "report_type": "SELLER_ORDERS",
+                "page_size": 100
             }
         }
     ]

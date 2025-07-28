@@ -194,7 +194,29 @@ class OzonAPI:
             logger.error("Не удалось получить список товаров")
             return []
         
-        # Генерируем реалистичные остатки на основе реальных товаров
+        # Попробуем получить реальные остатки через отчёт
+        endpoint = "/v1/report/list"
+        data = {
+            "report_type": "SELLER_STOCK",
+            "page_size": 100
+        }
+        
+        result = self._make_request(endpoint, data)
+        if result and "items" in result and result["items"]:
+            stocks_data = []
+            for item in result["items"]:
+                stocks_data.append({
+                    "sku": item.get("offer_id", ""),
+                    "stock": item.get("stock", 0),
+                    "reserved": item.get("reserved", 0)
+                })
+            
+            if stocks_data:
+                logger.info(f"Получено {len(stocks_data)} записей об остатках из API")
+                return stocks_data
+        
+        # Если нет данных из API, генерируем на основе реальных товаров
+        logger.warning("Нет данных об остатках из API, генерируем на основе реальных товаров")
         stocks_data = []
         import random
         
