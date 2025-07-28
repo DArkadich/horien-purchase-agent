@@ -164,7 +164,11 @@ def main():
         
     except Exception as e:
         logger.error("Ошибка в работе агента закупок: %s", str(e))
-        telegram.send_message(f"❌ Ошибка в работе агента закупок: {str(e)}")
+        try:
+            if 'telegram' in locals():
+                telegram.send_message(f"❌ Ошибка в работе агента закупок: {str(e)}")
+        except Exception as telegram_error:
+            logger.error("Не удалось отправить сообщение об ошибке в Telegram: %s", str(telegram_error))
 
 if __name__ == "__main__":
     main() 
