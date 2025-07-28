@@ -43,7 +43,8 @@ MINIMUM_ORDER_QUANTITIES = {
 # Настройки прогнозирования
 DAYS_FORECAST_SHORT = int(os.getenv('DAYS_FORECAST_SHORT', 40))
 DAYS_FORECAST_LONG = int(os.getenv('DAYS_FORECAST_LONG', 120))
-SALES_HISTORY_DAYS = int(os.getenv('SALES_HISTORY_DAYS', 90))
+# Настройки анализа продаж
+SALES_HISTORY_DAYS = int(os.getenv('SALES_HISTORY_DAYS', 180))
 
 # Настройки API
 OZON_API_KEY = os.getenv('OZON_API_KEY')

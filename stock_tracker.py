@@ -109,7 +109,7 @@ class StockTracker:
         
         return history
     
-    def estimate_sales_from_stock_changes(self, days: int = 90) -> List[Dict[str, Any]]:
+    def estimate_sales_from_stock_changes(self, days: int = 180) -> List[Dict[str, Any]]:
         """Оценивает продажи на основе изменений остатков"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()

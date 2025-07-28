@@ -117,7 +117,7 @@ class OzonAPI:
         
         return products
     
-    def get_sales_data(self, days: int = 90) -> List[Dict[str, Any]]:
+    def get_sales_data(self, days: int = 180) -> List[Dict[str, Any]]:
         """
         Получает данные о продажах за указанное количество дней
         """
@@ -314,7 +314,7 @@ class OzonAPI:
             logger.warning(f"Не удалось получить информацию о товарах. Результат: {result}")
         return []
     
-    def get_analytics_data(self, days: int = 90) -> List[Dict[str, Any]]:
+    def get_analytics_data(self, days: int = 180) -> List[Dict[str, Any]]:
         """
         Получает аналитические данные о продажах
         """
