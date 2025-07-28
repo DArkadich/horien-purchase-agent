@@ -118,44 +118,51 @@ class OzonAPI:
         """
         logger.info(f"Получение данных о продажах за {days} дней...")
         
-        # Получаем реальные товары для генерации данных
-        products = self.get_products()
-        if not products:
-            logger.warning("Нет товаров, используем тестовые данные")
-            return self._generate_test_sales_data(days)
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
         
-        # Используем реальные SKU для генерации данных
-        real_skus = [product.get("offer_id", "") for product in products if product.get("offer_id")]
+        # Попробуем получить реальные данные о продажах
+        endpoint = "/v2/order/list"
+        data = {
+            "limit": 1000,
+            "offset": 0,
+            "since": start_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "to": end_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "status": "delivered"
+        }
         
-        if not real_skus:
-            logger.warning("Нет SKU в товарах, используем тестовые данные")
-            return self._generate_test_sales_data(days)
-        
-        # Генерируем реалистичные данные на основе реальных товаров
         sales_data = []
-        import random
+        offset = 0
         
-        # Генерируем продажи только для части товаров и не каждый день
-        for i in range(days):
-            date = datetime.now() - timedelta(days=i)
+        while True:
+            data["offset"] = offset
+            result = self._make_request(endpoint, data)
             
-            # Выбираем случайные товары для продаж (не все сразу)
-            active_skus = random.sample(real_skus, min(10, len(real_skus)))  # Максимум 10 товаров в день
+            if not result or "orders" not in result:
+                break
+                
+            # Преобразуем заказы в формат продаж
+            for order in result["orders"]:
+                if "items" in order:
+                    for item in order["items"]:
+                        sales_data.append({
+                            "sku": item.get("offer_id", ""),
+                            "date": order.get("created_at", "").split("T")[0],
+                            "quantity": item.get("quantity", 0),
+                            "revenue": item.get("price", {}).get("price", 0)
+                        })
             
-            for sku in active_skus:
-                # Генерируем продажи только с некоторой вероятностью
-                if random.random() < 0.3:  # 30% вероятность продажи
-                    quantity = random.randint(1, 5)  # Реалистичные объемы
-                    revenue = quantity * random.randint(500, 2000)  # Реалистичные цены
-                    
-                    sales_data.append({
-                        "sku": sku,
-                        "date": date.strftime("%Y-%m-%d"),
-                        "quantity": quantity,
-                        "revenue": revenue
-                    })
+            if len(result["orders"]) < 1000:
+                break
+                
+            offset += 1000
         
-        logger.info(f"Сгенерировано {len(sales_data)} записей о продажах на основе {len(real_skus)} реальных товаров")
+        # Если нет данных из API, используем тестовые данные
+        if not sales_data:
+            logger.warning("Нет данных из API, используем тестовые данные")
+            sales_data = self._generate_test_sales_data(days)
+        
+        logger.info(f"Получено {len(sales_data)} записей о продажах")
         return sales_data
     
     def _generate_test_sales_data(self, days: int) -> List[Dict[str, Any]]:
@@ -194,29 +201,44 @@ class OzonAPI:
             logger.error("Не удалось получить список товаров")
             return []
         
-        # Генерируем реалистичные остатки на основе реальных товаров
-        stocks_data = []
-        import random
+        # Попробуем получить реальные остатки
+        product_ids = [product["id"] for product in products if "id" in product]
         
-        for product in products:
-            if "offer_id" in product:
-                # Не все товары должны иметь остатки
-                if random.random() < 0.7:  # 70% товаров имеют остатки
-                    # Генерируем реалистичные остатки
-                    stock = random.randint(5, 200)  # Реалистичные остатки
-                    reserved = random.randint(0, min(20, stock))  # Зарезервированные
-                    
-                    stocks_data.append({
-                        "sku": product["offer_id"],
-                        "stock": stock,
-                        "reserved": reserved
-                    })
+        if product_ids:
+            endpoint = "/v3/product/info/list"
+            data = {
+                "product_id": product_ids
+            }
+            
+            result = self._make_request(endpoint, data)
+            if result and "items" in result and result["items"]:
+                stocks_data = []
+                for item in result["items"]:
+                    # Извлекаем информацию об остатках из данных товара
+                    if "stock_info" in item:
+                        stock_info = item["stock_info"]
+                        stocks_data.append({
+                            "sku": item.get("offer_id", ""),
+                            "stock": stock_info.get("stock", 0),
+                            "reserved": stock_info.get("reserved", 0)
+                        })
+                    elif "stocks" in item:
+                        # Альтернативный формат
+                        stocks = item["stocks"]
+                        if stocks:
+                            stocks_data.append({
+                                "sku": item.get("offer_id", ""),
+                                "stock": stocks[0].get("stock", 0),
+                                "reserved": stocks[0].get("reserved", 0)
+                            })
+                
+                if stocks_data:
+                    logger.info(f"Получено {len(stocks_data)} записей об остатках из API")
+                    return stocks_data
         
-        if stocks_data:
-            logger.info(f"Сгенерировано {len(stocks_data)} записей об остатках на основе {len(products)} реальных товаров")
-        else:
-            logger.warning("Не удалось сгенерировать остатки, используем тестовые данные")
-            stocks_data = self._generate_test_stocks_data()
+        # Если нет данных из API, используем тестовые данные
+        logger.warning("Нет данных об остатках из API, используем тестовые данные")
+        stocks_data = self._generate_test_stocks_data()
         
         logger.info(f"Получено {len(stocks_data)} записей об остатках")
         return stocks_data
