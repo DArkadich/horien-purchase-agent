@@ -82,10 +82,15 @@ class OzonAPI:
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
         
-        endpoint = "/v3/product/sales"
+        # Используем правильный эндпоинт для аналитики продаж
+        endpoint = "/v1/analytics/data"
         data = {
             "date_from": start_date.strftime("%Y-%m-%d"),
             "date_to": end_date.strftime("%Y-%m-%d"),
+            "metrics": ["revenue", "orders"],
+            "dimension": ["day", "sku"],
+            "filters": [],
+            "sort": [{"key": "day", "order": "ASC"}],
             "limit": 1000,
             "offset": 0
         }
@@ -97,12 +102,20 @@ class OzonAPI:
             data["offset"] = offset
             result = self._make_request(endpoint, data)
             
-            if not result or "items" not in result:
+            if not result or "data" not in result:
                 break
                 
-            sales_data.extend(result["items"])
+            # Преобразуем данные аналитики в формат продаж
+            for item in result["data"]:
+                if "sku" in item and "orders" in item:
+                    sales_data.append({
+                        "sku": item["sku"],
+                        "date": item.get("day", ""),
+                        "quantity": item.get("orders", 0),
+                        "revenue": item.get("revenue", 0)
+                    })
             
-            if len(result["items"]) < 1000:
+            if len(result["data"]) < 1000:
                 break
                 
             offset += 1000
@@ -116,28 +129,29 @@ class OzonAPI:
         """
         logger.info("Получение данных об остатках...")
         
-        endpoint = "/v3/product/info/stocks"
-        data = {
-            "limit": 1000,
-            "offset": 0
-        }
+        # Сначала получаем список товаров
+        products = self.get_products()
+        if not products:
+            logger.error("Не удалось получить список товаров")
+            return []
         
+        # Получаем остатки для каждого товара
         stocks_data = []
-        offset = 0
-        
-        while True:
-            data["offset"] = offset
-            result = self._make_request(endpoint, data)
-            
-            if not result or "items" not in result:
-                break
+        for product in products:
+            if "product_id" in product:
+                endpoint = "/v1/product/info/stocks"
+                data = {
+                    "product_id": product["product_id"]
+                }
                 
-            stocks_data.extend(result["items"])
-            
-            if len(result["items"]) < 1000:
-                break
-                
-            offset += 1000
+                result = self._make_request(endpoint, data)
+                if result and "items" in result:
+                    for item in result["items"]:
+                        stocks_data.append({
+                            "sku": product.get("offer_id", ""),
+                            "stock": item.get("stock", 0),
+                            "reserved": item.get("reserved", 0)
+                        })
         
         logger.info(f"Получено {len(stocks_data)} записей об остатках")
         return stocks_data
