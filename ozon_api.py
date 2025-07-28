@@ -155,7 +155,9 @@ class OzonAPI:
         """
         Получает данные об остатках товаров
         """
-        logger.info("Получение данных об остатках...")
+        logger.info("=" * 50)
+        logger.info("НАЧАЛО ПОЛУЧЕНИЯ ОСТАТКОВ")
+        logger.info("=" * 50)
         
         # Пытаемся получить остатки через отчет о товарах (основной метод)
         logger.info("Попытка получения остатков через отчет о товарах...")
@@ -279,7 +281,7 @@ class OzonAPI:
             data = {
                 "date_from": start_date.strftime("%Y-%m-%d"),
                 "date_to": end_date.strftime("%Y-%m-%d"),
-                "metrics": ["stock"],
+                "metrics": ["revenue", "orders", "views", "stock"],  # Добавляем больше метрик
                 "dimension": ["sku"],
                 "filters": [],
                 "sort": [{"key": "sku", "order": "ASC"}],
