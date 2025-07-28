@@ -1,94 +1,124 @@
 #!/usr/bin/env python3
 """
-Тестовый скрипт для проверки импортов модулей
+Тестовый скрипт для проверки импортов и базовой функциональности
 """
 
 import sys
-import os
+import logging
+from datetime import datetime
+
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+logger = logging.getLogger(__name__)
 
 def test_imports():
     """Тестирует импорт всех модулей"""
-    
-    print("Тестирование импортов модулей...")
-    
     try:
-        # Тестируем импорт config
-        print("✓ Импорт config...")
-        import config
+        logger.info("Тестирование импортов...")
         
-        # Тестируем импорт ozon_api
-        print("✓ Импорт ozon_api...")
-        import ozon_api
+        # Тестируем импорт конфигурации
+        from config import validate_config, logger as config_logger
+        logger.info("✓ Конфигурация импортирована")
         
-        # Тестируем импорт forecast
-        print("✓ Импорт forecast...")
-        import forecast
+        # Тестируем импорт Ozon API
+        from ozon_api import OzonAPI
+        logger.info("✓ Ozon API импортирован")
         
-        # Тестируем импорт sheets
-        print("✓ Импорт sheets...")
-        import sheets
+        # Тестируем импорт прогнозирования
+        from forecast import PurchaseForecast
+        logger.info("✓ Модуль прогнозирования импортирован")
         
-        # Тестируем импорт telegram_notify
-        print("✓ Импорт telegram_notify...")
-        import telegram_notify
+        # Тестируем импорт Google Sheets
+        from sheets import GoogleSheets
+        logger.info("✓ Google Sheets импортирован")
         
-        print("\n✅ Все модули успешно импортированы!")
+        # Тестируем импорт Telegram
+        from telegram_notify import TelegramNotifier
+        logger.info("✓ Telegram уведомления импортированы")
+        
+        logger.info("✓ Все модули успешно импортированы")
         return True
         
     except ImportError as e:
-        print(f"\n❌ Ошибка импорта: {e}")
+        logger.error(f"Ошибка импорта: {e}")
         return False
     except Exception as e:
-        print(f"\n❌ Неожиданная ошибка: {e}")
+        logger.error(f"Неожиданная ошибка: {e}")
         return False
 
-def test_config_validation():
-    """Тестирует валидацию конфигурации"""
-    
-    print("\nТестирование валидации конфигурации...")
-    
+def test_basic_functionality():
+    """Тестирует базовую функциональность"""
     try:
-        # Устанавливаем тестовые переменные окружения
-        os.environ['OZON_API_KEY'] = 'test_key'
-        os.environ['OZON_CLIENT_ID'] = 'test_client'
-        os.environ['GOOGLE_SERVICE_ACCOUNT_JSON'] = '{"test": "json"}'
-        os.environ['GOOGLE_SPREADSHEET_ID'] = 'test_spreadsheet'
-        os.environ['TELEGRAM_TOKEN'] = 'test_token'
-        os.environ['TELEGRAM_CHAT_ID'] = 'test_chat'
+        logger.info("Тестирование базовой функциональности...")
         
-        # Перезагружаем config для применения новых переменных
-        import importlib
-        import config
-        importlib.reload(config)
+        # Тестируем создание объектов
+        from ozon_api import OzonAPI
+        from forecast import PurchaseForecast
         
-        # Тестируем валидацию
-        if config.validate_config():
-            print("✅ Конфигурация валидна")
-            return True
-        else:
-            print("❌ Конфигурация невалидна")
-            return False
-            
+        ozon_api = OzonAPI()
+        logger.info("✓ OzonAPI объект создан")
+        
+        forecast = PurchaseForecast()
+        logger.info("✓ PurchaseForecast объект создан")
+        
+        # Тестируем генерацию тестовых данных
+        test_products = ozon_api._generate_test_products()
+        logger.info(f"✓ Сгенерировано {len(test_products)} тестовых товаров")
+        
+        test_sales = ozon_api._generate_test_sales_data(30)
+        logger.info(f"✓ Сгенерировано {len(test_sales)} тестовых продаж")
+        
+        test_stocks = ozon_api._generate_test_stocks_data()
+        logger.info(f"✓ Сгенерировано {len(test_stocks)} тестовых остатков")
+        
+        # Тестируем подготовку данных
+        sales_df = forecast.prepare_sales_data(test_sales)
+        stocks_df = forecast.prepare_stocks_data(test_stocks)
+        
+        logger.info(f"✓ Подготовлено {len(sales_df)} записей продаж")
+        logger.info(f"✓ Подготовлено {len(stocks_df)} записей остатков")
+        
+        # Тестируем расчет прогноза
+        forecast_df = forecast.calculate_forecast(sales_df, stocks_df)
+        logger.info(f"✓ Рассчитан прогноз для {len(forecast_df)} SKU")
+        
+        # Тестируем генерацию отчета
+        report = forecast.generate_purchase_report(forecast_df)
+        logger.info(f"✓ Сгенерирован отчет для {len(report)} позиций")
+        
+        logger.info("✓ Базовая функциональность работает корректно")
+        return True
+        
     except Exception as e:
-        print(f"❌ Ошибка тестирования конфигурации: {e}")
+        logger.error(f"Ошибка тестирования функциональности: {e}")
         return False
 
-if __name__ == "__main__":
-    print("=" * 50)
-    print("Тестирование агента закупок Horiens")
-    print("=" * 50)
+def main():
+    """Главная функция тестирования"""
+    logger.info("=" * 50)
+    logger.info("Запуск тестирования системы")
+    logger.info("=" * 50)
     
     # Тестируем импорты
-    imports_ok = test_imports()
+    if not test_imports():
+        logger.error("Тест импортов не прошел")
+        return 1
     
-    # Тестируем конфигурацию
-    config_ok = test_config_validation()
+    # Тестируем базовую функциональность
+    if not test_basic_functionality():
+        logger.error("Тест функциональности не прошел")
+        return 1
     
-    print("\n" + "=" * 50)
-    if imports_ok and config_ok:
-        print("✅ Все тесты пройдены успешно!")
-        print("Приложение готово к запуску")
-    else:
-        print("❌ Некоторые тесты не пройдены")
-        print("Проверьте конфигурацию и зависимости")
-    print("=" * 50) 
+    logger.info("=" * 50)
+    logger.info("Все тесты прошли успешно!")
+    logger.info("=" * 50)
+    
+    return 0
+
+if __name__ == "__main__":
+    exit_code = main()
+    exit(exit_code) 

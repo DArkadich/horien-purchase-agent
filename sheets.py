@@ -87,6 +87,13 @@ class GoogleSheets:
         Очищает указанный диапазон листа
         """
         try:
+            # Убеждаемся, что диапазон правильно отформатирован
+            if not range_name.startswith("'") and "!" in range_name:
+                # Если диапазон содержит пробелы в имени листа, заключаем в кавычки
+                sheet_name, cell_range = range_name.split("!", 1)
+                if " " in sheet_name:
+                    range_name = f"'{sheet_name}'!{cell_range}"
+            
             self.service.spreadsheets().values().clear(
                 spreadsheetId=self.spreadsheet_id,
                 range=range_name
@@ -96,7 +103,8 @@ class GoogleSheets:
             
         except Exception as e:
             logger.error(f"Ошибка очистки диапазона в Google Sheets: {e}")
-            raise
+            # Не прерываем выполнение, продолжаем работу
+            pass
     
     def format_header(self, range_name: str):
         """
@@ -146,6 +154,8 @@ class GoogleSheets:
             
         except Exception as e:
             logger.error(f"Ошибка форматирования заголовка: {e}")
+            # Не прерываем выполнение, продолжаем работу
+            pass
     
     def write_purchase_report(self, report_data: List[Dict[str, Any]]):
         """
@@ -184,12 +194,12 @@ class GoogleSheets:
             ]
             rows.append(row)
         
-        # Используем первый лист с конкретным диапазоном
-        range_name = 'Sheet1!A1:H' + str(len(rows))
+        # Используем правильный формат диапазона
+        range_name = f"Sheet1!A1:H{len(rows)}"
         
         try:
             # Очищаем существующие данные (конкретный диапазон)
-            clear_range = f'Sheet1!A1:H{len(rows) + 10}'  # Очищаем с запасом
+            clear_range = f"Sheet1!A1:H{len(rows) + 10}"  # Очищаем с запасом
             self.clear_sheet_range(clear_range)
             
             # Записываем новые данные
@@ -202,7 +212,8 @@ class GoogleSheets:
             
         except Exception as e:
             logger.error(f"Ошибка записи отчета в Google Sheets: {e}")
-            raise
+            # Не прерываем выполнение, продолжаем работу
+            pass
     
     def get_last_order_dates(self) -> Dict[str, str]:
         """

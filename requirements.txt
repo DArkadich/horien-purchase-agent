@@ -5,5 +5,5 @@ google-auth-httplib2==0.1.1
 google-api-python-client==2.108.0
 python-telegram-bot==20.7
 python-dotenv==1.0.0
-pandas==2.1.4
-numpy==1.25.2 
+pandas>=2.2.0
+numpy>=1.26.0 

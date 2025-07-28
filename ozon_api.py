@@ -28,13 +28,21 @@ class OzonAPI:
         try:
             url = f"{self.base_url}{endpoint}"
             response = requests.post(url, headers=self.headers, json=data)
-            response.raise_for_status()
             
-            result = response.json()
-            if result.get("result"):
-                return result["result"]
+            # Логируем детали запроса для отладки
+            logger.debug(f"API Request: {url}")
+            logger.debug(f"Request data: {data}")
+            logger.debug(f"Response status: {response.status_code}")
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("result"):
+                    return result["result"]
+                else:
+                    logger.error(f"API вернул ошибку: {result}")
+                    return None
             else:
-                logger.error(f"API вернул ошибку: {result}")
+                logger.error(f"API вернул статус {response.status_code}: {response.text}")
                 return None
                 
         except requests.exceptions.RequestException as e:
@@ -47,23 +55,21 @@ class OzonAPI:
         """
         logger.info("Получение списка товаров...")
         
-        # Пробуем разные эндпоинты для получения товаров
-        endpoints = [
-            "/v2/product/list",
-            "/v1/product/list",
-            "/v3/product/list"
-        ]
-        
-        for endpoint in endpoints:
-            data = {
-                "limit": 1000,
-                "offset": 0
+        # Используем правильный эндпоинт для получения товаров
+        endpoint = "/v2/product/list"
+        data = {
+            "limit": 1000,
+            "offset": 0,
+            "with": {
+                "price": True,
+                "stock": True
             }
-            
-            result = self._make_request(endpoint, data)
-            if result and "items" in result:
-                logger.info(f"Успешно получены товары через {endpoint}")
-                return result["items"]
+        }
+        
+        result = self._make_request(endpoint, data)
+        if result and "items" in result:
+            logger.info(f"Успешно получены товары: {len(result['items'])} шт")
+            return result["items"]
         
         logger.warning("Не удалось получить товары через API, используем тестовые данные")
         return self._generate_test_products()
@@ -77,7 +83,7 @@ class OzonAPI:
         
         for i, sku in enumerate(test_skus):
             products.append({
-                "product_id": i + 1,
+                "id": i + 1,
                 "offer_id": sku,
                 "name": f"Контактная линза {sku}",
                 "status": "active"
@@ -179,10 +185,10 @@ class OzonAPI:
         # Получаем остатки для каждого товара
         stocks_data = []
         for product in products:
-            if "product_id" in product:
-                endpoint = "/v1/product/info/stocks"
+            if "id" in product:
+                endpoint = "/v3/product/info/stocks"
                 data = {
-                    "product_id": product["product_id"]
+                    "product_id": product["id"]
                 }
                 
                 result = self._make_request(endpoint, data)
