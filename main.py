@@ -3,177 +3,161 @@
 Главный модуль агента закупок Horiens
 """
 
-import time
 import logging
-import os
+import time
+import pandas as pd
 from datetime import datetime
 from typing import Dict, List, Any
+import os
 
 # Импорты модулей
-from config import validate_config, logger
+from config import Config
 from ozon_api import OzonAPI
-from forecast import PurchaseForecast
 from sheets import GoogleSheets
 from telegram_notify import TelegramNotifier
+from forecast import ForecastCalculator
+from stock_tracker import StockTracker
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def main():
-    """
-    Главная функция приложения
-    """
+    """Основная функция агента закупок"""
     start_time = time.time()
     
     try:
-        logger.info("=" * 50)
-        logger.info("Запуск агента закупок Horiens")
-        logger.info("=" * 50)
+        # Инициализация конфигурации
+        config = Config()
+        logger.info("Конфигурация загружена успешно")
         
-        # Проверяем конфигурацию
-        if not validate_config():
-            logger.error("Ошибка конфигурации. Завершение работы.")
-            return 1
-        
-        # Инициализируем компоненты
+        # Инициализация компонентов
         logger.info("Инициализация компонентов...")
-        
         ozon_api = OzonAPI()
-        forecast = PurchaseForecast()
         sheets = GoogleSheets()
         telegram = TelegramNotifier()
+        stock_tracker = StockTracker()
         
-        # Отправляем уведомление о запуске
-        telegram.send_startup_notification_sync()
+        # Отправка уведомления о запуске
+        telegram.send_message("🚀 Агент закупок Horiens запущен")
         
-        # Получаем данные из Ozon API
+        # Получение данных из Ozon API
         logger.info("Получение данных из Ozon API...")
         
-        # Получаем данные о продажах
-        sales_data = ozon_api.get_sales_data()
+        # Получаем товары
+        products = ozon_api.get_products()
+        if not products:
+            logger.error("Не удалось получить товары")
+            telegram.send_message("❌ Ошибка: Не удалось получить товары из Ozon API")
+            return
+        
+        logger.info(f"Успешно получены товары: {len(products)} шт")
+        
+        # Сохраняем текущие остатки в базу данных
+        logger.info("Сохранение данных об остатках...")
+        current_stocks = ozon_api.get_stocks_data()
+        if current_stocks:
+            stock_tracker.save_stock_data(current_stocks)
+            logger.info(f"Сохранено {len(current_stocks)} записей об остатках")
+        else:
+            logger.warning("Нет данных об остатках для сохранения")
+        
+        # Получаем данные о продажах на основе истории остатков
+        logger.info("Получение данных о продажах на основе истории остатков...")
+        sales_data = stock_tracker.estimate_sales_from_stock_changes(days=90)
+        
         if not sales_data:
-            logger.error("Не удалось получить данные о продажах")
-            telegram.send_error_notification_sync("Не удалось получить данные о продажах из Ozon API")
-            return 1
+            logger.warning("Нет данных о продажах из истории остатков")
+            telegram.send_message("⚠️ Предупреждение: Нет данных о продажах для анализа")
+            return
+        
+        logger.info(f"Получено {len(sales_data)} записей о продажах из истории остатков")
         
         # Получаем данные об остатках
-        stocks_data = ozon_api.get_stocks_data()
-        if not stocks_data:
-            logger.error("Не удалось получить данные об остатках")
-            telegram.send_error_notification_sync("Не удалось получить данные об остатках из Ozon API")
-            return 1
+        logger.info("Получение данных об остатках...")
+        stocks_data = current_stocks if current_stocks else []
         
-        # Подготавливаем данные для анализа
+        if not stocks_data:
+            logger.warning("Нет данных об остатках")
+            telegram.send_message("⚠️ Предупреждение: Нет данных об остатках для анализа")
+            return
+        
+        logger.info(f"Получено {len(stocks_data)} записей об остатках")
+        
+        # Подготовка данных для анализа
         logger.info("Подготовка данных для анализа...")
         
-        sales_df = forecast.prepare_sales_data(sales_data)
-        stocks_df = forecast.prepare_stocks_data(stocks_data)
+        # Подготовка данных о продажах
+        logger.info("Подготовка данных о продажах...")
+        sales_df = pd.DataFrame(sales_data)
+        if not sales_df.empty:
+            logger.info(f"Подготовлено {len(sales_df)} записей о продажах")
+        else:
+            logger.warning("Нет данных о продажах для анализа")
+            return
         
-        if sales_df.empty or stocks_df.empty:
-            logger.error("Недостаточно данных для анализа")
-            telegram.send_error_notification_sync("Недостаточно данных для анализа")
-            return 1
+        # Подготовка данных об остатках
+        logger.info("Подготовка данных об остатках...")
+        stocks_df = pd.DataFrame(stocks_data)
+        if not stocks_df.empty:
+            logger.info(f"Подготовлено {len(stocks_df)} записей об остатках")
+        else:
+            logger.warning("Нет данных об остатках для анализа")
+            return
         
-        # Рассчитываем прогноз закупок
+        # Расчет прогноза закупок
         logger.info("Расчет прогноза закупок...")
+        calculator = ForecastCalculator()
+        forecast_data = calculator.calculate_purchase_forecast(sales_df, stocks_df)
         
-        forecast_df = forecast.calculate_forecast(sales_df, stocks_df)
+        if not forecast_data:
+            logger.error("Не удалось рассчитать прогноз закупок")
+            telegram.send_message("❌ Ошибка: Не удалось рассчитать прогноз закупок")
+            return
         
-        if forecast_df.empty:
-            logger.warning("Нет данных для прогноза закупок")
-            telegram.send_message_sync("📊 Нет товаров, требующих закупки.")
-            return 0
+        logger.info(f"Рассчитан прогноз для {len(forecast_data)} позиций")
         
-        # Генерируем отчет о закупках
+        # Генерация отчета о закупках
         logger.info("Генерация отчета о закупках...")
+        report_data = calculator.generate_purchase_report(forecast_data)
         
-        purchase_report = forecast.generate_purchase_report(forecast_df)
+        if not report_data:
+            logger.error("Не удалось сгенерировать отчет о закупках")
+            telegram.send_message("❌ Ошибка: Не удалось сгенерировать отчет о закупках")
+            return
         
-        if not purchase_report:
-            logger.info("Нет товаров, требующих закупки")
-            telegram.send_message_sync("📊 Нет товаров, требующих закупки.")
-            return 0
+        logger.info(f"Сгенерирован отчет для {len(report_data)} SKU")
         
-        # Генерируем сводные данные
-        summary_data = generate_summary_data(purchase_report)
-        
-        # Записываем отчет в Google Sheets
+        # Запись отчета в Google Sheets
         logger.info("Запись отчета в Google Sheets...")
+        sheets.write_purchase_report(report_data)
+        logger.info("Отчет о закупках записан в Google Sheets")
         
-        try:
-            sheets.write_purchase_report(purchase_report)
-            sheets.create_summary_sheet(summary_data)
-            logger.info("Отчет успешно записан в Google Sheets")
-        except Exception as e:
-            logger.error(f"Ошибка записи в Google Sheets: {e}")
-            telegram.send_error_notification_sync(f"Ошибка записи в Google Sheets: {e}")
-            return 1
+        # Создание сводного листа
+        logger.info("Создание сводного листа...")
+        sheets.create_summary_sheet(report_data)
+        logger.info("Сводный лист создан")
         
-        # Отправляем отчет в Telegram
+        # Отправка отчета в Telegram
         logger.info("Отправка отчета в Telegram...")
+        telegram.send_purchase_report(report_data)
+        logger.info("Отчет о закупках отправлен в Telegram")
         
-        try:
-            telegram.send_purchase_report_sync(purchase_report, summary_data)
-            logger.info("Отчет успешно отправлен в Telegram")
-        except Exception as e:
-            logger.error(f"Ошибка отправки в Telegram: {e}")
-            # Не прерываем выполнение, так как основная работа уже выполнена
-        
-        # Рассчитываем время выполнения
+        # Отправка итогового уведомления
         execution_time = time.time() - start_time
-        
-        # Отправляем уведомление о завершении
-        telegram.send_completion_notification_sync(execution_time, len(purchase_report))
+        telegram.send_message(
+            f"✅ Агент закупок завершил работу за {execution_time:.2f} секунд\n"
+            f"📊 Обработано {len(report_data)} позиций для закупки"
+        )
         
         logger.info("=" * 50)
-        logger.info(f"Агент закупок завершил работу за {execution_time:.2f} секунд")
-        logger.info(f"Обработано {len(purchase_report)} позиций для закупки")
+        logger.info("Агент закупок завершил работу за %.2f секунд", execution_time)
+        logger.info("Обработано %d позиций для закупки", len(report_data))
         logger.info("=" * 50)
-        
-        return 0
         
     except Exception as e:
-        execution_time = time.time() - start_time
-        error_message = f"Критическая ошибка: {str(e)}"
-        logger.error(error_message, exc_info=True)
-        
-        # Отправляем уведомление об ошибке
-        try:
-            telegram = TelegramNotifier()
-            telegram.send_error_notification_sync(error_message)
-        except:
-            logger.error("Не удалось отправить уведомление об ошибке")
-        
-        return 1
-
-def generate_summary_data(report_data: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """
-    Генерирует сводные данные для отчета
-    """
-    if not report_data:
-        return {
-            'total_items': 0,
-            'high_priority': 0,
-            'medium_priority': 0,
-            'low_priority': 0,
-            'total_value': 0,
-            'items': []
-        }
-    
-    # Подсчитываем приоритеты
-    high_priority = sum(1 for item in report_data if item['urgency'] == 'HIGH')
-    medium_priority = sum(1 for item in report_data if item['urgency'] == 'MEDIUM')
-    low_priority = sum(1 for item in report_data if item['urgency'] == 'LOW')
-    
-    # Рассчитываем общую стоимость (примерно)
-    total_value = sum(item['recommended_quantity'] for item in report_data)
-    
-    return {
-        'total_items': len(report_data),
-        'high_priority': high_priority,
-        'medium_priority': medium_priority,
-        'low_priority': low_priority,
-        'total_value': total_value,
-        'items': report_data
-    }
+        logger.error("Ошибка в работе агента закупок: %s", str(e))
+        telegram.send_message(f"❌ Ошибка в работе агента закупок: {str(e)}")
 
 if __name__ == "__main__":
-    exit_code = main()
-    exit(exit_code) 
+    main() 
