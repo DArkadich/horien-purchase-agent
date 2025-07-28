@@ -139,6 +139,9 @@ class OzonAPI:
             logger.warning("Неправильный порядок дат, используем тестовые данные")
             return self._generate_test_sales_data(days)
         
+        # Логируем даты для отладки
+        logger.debug(f"Запрос аналитики: с {data['date_from']} по {data['date_to']}")
+        
         sales_data = []
         offset = 0
         
@@ -212,20 +215,32 @@ class OzonAPI:
         stocks_data = []
         for product in products:
             if "id" in product:
-                # Попробуем другой эндпоинт для остатков
-                endpoint = "/v2/product/info/stocks"
+                # Попробуем получить информацию о товаре с остатками
+                endpoint = "/v3/product/info/list"
                 data = {
-                    "product_id": product["id"]
+                    "product_id": [product["id"]]
                 }
                 
                 result = self._make_request(endpoint, data)
-                if result and "items" in result:
-                    for item in result["items"]:
+                if result and "items" in result and result["items"]:
+                    item = result["items"][0]
+                    # Извлекаем информацию об остатках из данных товара
+                    if "stock_info" in item:
+                        stock_info = item["stock_info"]
                         stocks_data.append({
                             "sku": product.get("offer_id", ""),
-                            "stock": item.get("stock", 0),
-                            "reserved": item.get("reserved", 0)
+                            "stock": stock_info.get("stock", 0),
+                            "reserved": stock_info.get("reserved", 0)
                         })
+                    elif "stocks" in item:
+                        # Альтернативный формат
+                        stocks = item["stocks"]
+                        if stocks:
+                            stocks_data.append({
+                                "sku": product.get("offer_id", ""),
+                                "stock": stocks[0].get("stock", 0),
+                                "reserved": stocks[0].get("reserved", 0)
+                            })
         
         # Если нет данных из API, используем тестовые данные
         if not stocks_data:

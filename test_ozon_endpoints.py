@@ -98,8 +98,8 @@ def test_ozon_api():
             "name": "Аналитика (v1)",
             "endpoint": "/v1/analytics/data",
             "data": {
-                "date_from": "2024-11-01",
-                "date_to": "2024-12-31",
+                "date_from": "2024-10-01",
+                "date_to": "2024-10-31",
                 "metrics": ["revenue", "orders"],
                 "dimension": ["day"],
                 "filters": [],
