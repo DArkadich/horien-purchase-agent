@@ -289,7 +289,9 @@ class OzonAPI:
             "offer_id": offer_ids
         }
         
+        logger.info(f"Отправляем запрос на {endpoint} с данными: {data}")
         result = self._make_request(endpoint, data)
+        logger.info(f"Получен ответ от API: {result is not None}")
         
         if result and "items" in result:
             logger.info(f"Получена информация о {len(result['items'])} товарах")
@@ -297,13 +299,15 @@ class OzonAPI:
             # Логируем структуру первого товара для отладки
             if result['items']:
                 first_item = result['items'][0]
-                logger.debug(f"Структура первого товара: {list(first_item.keys())}")
+                logger.info(f"Первый товар: offer_id={first_item.get('offer_id')}, name={first_item.get('name')}")
                 if 'stocks' in first_item:
-                    logger.debug(f"Структура stocks: {first_item['stocks']}")
+                    stocks = first_item['stocks']
+                    logger.info(f"Stocks первого товара: has_stock={stocks.get('has_stock')}, stocks_count={len(stocks.get('stocks', []))}")
             
             return result["items"]
-        
-        return []
+        else:
+            logger.warning(f"Не удалось получить информацию о товарах. Результат: {result}")
+            return []
     
     def get_analytics_data(self, days: int = 90) -> List[Dict[str, Any]]:
         """
