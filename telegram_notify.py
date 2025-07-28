@@ -4,6 +4,7 @@
 
 import asyncio
 import logging
+from datetime import datetime
 from typing import Dict, List, Any
 from telegram import Bot
 from telegram.error import TelegramError
@@ -120,7 +121,6 @@ class TelegramNotifier:
         """
         Отправляет уведомление о запуске агента
         """
-        from datetime import datetime
         message = f"🚀 <b>Агент закупок запущен</b>\n\nВремя запуска: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         await self.send_message(message)
     
