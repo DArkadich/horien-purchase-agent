@@ -305,10 +305,14 @@ class OzonAPI:
                     sku = ""
                     stock_value = 0
                     
-                    # Извлекаем SKU из dimensions
+                    # Извлекаем SKU из offer_id в dimensions
                     if 'dimensions' in item and item['dimensions']:
                         for dimension in item['dimensions']:
-                            if 'id' in dimension:
+                            if 'offer_id' in dimension:
+                                sku = str(dimension['offer_id'])
+                                break
+                            elif 'id' in dimension:
+                                # Fallback на id если offer_id нет
                                 sku = str(dimension['id'])
                                 break
                     
