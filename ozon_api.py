@@ -155,48 +155,17 @@ class OzonAPI:
         """
         Получает данные об остатках товаров
         """
-        logger.info("=" * 50)
-        logger.info("НАЧАЛО ПОЛУЧЕНИЯ ОСТАТКОВ")
-        logger.info("=" * 50)
-        
-        # Пытаемся получить остатки через отчет о товарах (основной метод)
-        logger.info("Попытка получения остатков через отчет о товарах...")
         try:
-            report_id = self.create_products_report()
-            logger.info(f"Результат создания отчета: {report_id}")
+            logger.info("Получение данных об остатках...")
             
-            if report_id:
-                # Ждем готовности отчета (максимум 30 секунд)
-                import time
-                for i in range(30):
-                    time.sleep(1)
-                    logger.info(f"Проверка готовности отчета, попытка {i+1}/30")
-                    stocks_data = self.get_report_file(report_id)
-                    if stocks_data:
-                        logger.info(f"Получено {len(stocks_data)} записей об остатках из отчета")
-                        return stocks_data
-                    logger.info(f"Отчет еще не готов, попытка {i+1}/30")
-                
-                logger.warning("Отчет не готов за 30 секунд")
-            else:
-                logger.warning("Не удалось создать отчет о товарах")
-        except Exception as e:
-            logger.error(f"Ошибка при работе с отчетом о товарах: {e}")
-        
-        # Если отчет не сработал, пробуем старые методы
-        logger.info("Попытка получения остатков через product info...")
-        
-        # Получаем реальные товары
-        products = self.get_products()
-        if not products:
-            logger.error("Не удалось получить список товаров")
-            return []
-        
-        # Пытаемся получить остатки через API
-        try:
-            # Получаем ID товаров
-            product_ids = [product['product_id'] for product in products if 'product_id' in product]
+            # Получаем список товаров
+            products = self.get_products()
+            if not products:
+                logger.warning("Нет товаров для получения остатков")
+                return []
             
+            # Извлекаем ID товаров
+            product_ids = [product.get('id') for product in products if product.get('id')]
             if not product_ids:
                 logger.warning("Нет ID товаров для получения остатков")
                 return []
@@ -211,133 +180,42 @@ class OzonAPI:
                     logger.debug(f"Товар {product.get('id', 'unknown')} имеет ошибки: {product['errors']}")
                     continue
                 
-                if 'stock_info' in product:
-                    stock_info = product['stock_info']
-                    stocks_data.append({
-                        "sku": product.get('sku', ''),
-                        "stock": stock_info.get('stock', 0),
-                        "reserved": stock_info.get('reserved', 0)
-                    })
-                elif 'stocks' in product:
-                    # Альтернативный формат
+                # Используем offer_id как SKU
+                sku = product.get('offer_id', '')
+                
+                if 'stocks' in product:
                     stocks = product['stocks']
                     if 'stocks' in stocks and isinstance(stocks['stocks'], list) and stocks['stocks']:
                         # Новый формат с массивом stocks
                         for stock_item in stocks['stocks']:
                             stocks_data.append({
-                                "sku": stock_item.get('sku', ''),
+                                "sku": sku,
                                 "stock": stock_item.get('present', 0),
                                 "reserved": stock_item.get('reserved', 0)
                             })
                     elif 'has_stock' in stocks and stocks['has_stock']:
                         # Есть остатки, но нет детальной информации
                         stocks_data.append({
-                            "sku": product.get('sku', ''),
+                            "sku": sku,
                             "stock": 1,  # Минимальное значение
                             "reserved": 0
                         })
                     else:
                         # Старый формат или нет остатков
                         stocks_data.append({
-                            "sku": product.get('sku', ''),
+                            "sku": sku,
                             "stock": stocks.get('stock', 0),
                             "reserved": stocks.get('reserved', 0)
                         })
             
             if stocks_data:
-                logger.info(f"Получено {len(stocks_data)} записей об остатках")
+                logger.info(f"Получено {len(stocks_data)} записей об остатках из product_info")
+                # Логируем несколько примеров
+                for i, stock_item in enumerate(stocks_data[:3]):
+                    logger.info(f"Пример остатка {i+1}: {stock_item}")
                 return stocks_data
             
-            # Если не удалось получить через product_info, пробуем отчеты
-            logger.info("Попытка получения остатков через отчеты...")
-            endpoint = "/v1/report/list"
-            data = {
-                "report_type": "SELLER_STOCK",
-                "page_size": 100,
-                "page": 1
-            }
-            
-            result = self._make_request(endpoint, data)
-            
-            if result and "items" in result:
-                stocks_data = []
-                for item in result["items"]:
-                    stocks_data.append({
-                        "sku": item.get('sku', ''),
-                        "stock": item.get('stock', 0),
-                        "reserved": item.get('reserved', 0)
-                    })
-                
-                if stocks_data:
-                    logger.info(f"Получено {len(stocks_data)} записей об остатках через отчеты")
-                    return stocks_data
-            
-            # Попробуем получить остатки через analytics
-            logger.info("Попытка получения остатков через analytics...")
-            endpoint = "/v1/analytics/data"
-            end_date = datetime.now()
-            start_date = end_date - timedelta(days=1)
-            
-            data = {
-                "date_from": start_date.strftime("%Y-%m-%d"),
-                "date_to": end_date.strftime("%Y-%m-%d"),
-                "metrics": ["revenue", "orders", "views", "stock"],  # Добавляем больше метрик
-                "dimension": ["sku"],
-                "filters": [],
-                "sort": [{"key": "sku", "order": "ASC"}],
-                "limit": 1000,
-                "offset": 0
-            }
-            
-            result = self._make_request(endpoint, data)
-            
-            if result and "data" in result:
-                stocks_data = []
-                logger.info(f"Получены данные от analytics API: {len(result['data'])} записей")
-                
-                # Логируем первую запись для отладки
-                if result['data']:
-                    first_item = result['data'][0]
-                    logger.info(f"Пример данных от analytics: {first_item}")
-                
-                for item in result["data"]:
-                    # Правильный парсинг данных от analytics API
-                    sku = ""
-                    stock_value = 0
-                    
-                    # Извлекаем SKU из offer_id в dimensions
-                    if 'dimensions' in item and item['dimensions']:
-                        for dimension in item['dimensions']:
-                            if 'offer_id' in dimension:
-                                sku = str(dimension['offer_id'])
-                                break
-                            elif 'id' in dimension:
-                                # Fallback на id если offer_id нет
-                                sku = str(dimension['id'])
-                                break
-                    
-                    # Извлекаем значение остатка из metrics
-                    if 'metrics' in item and item['metrics']:
-                        # Берем первое значение из metrics как остаток
-                        try:
-                            stock_value = int(item['metrics'][0])
-                        except (ValueError, TypeError, IndexError):
-                            stock_value = 0
-                    
-                    stocks_data.append({
-                        "sku": sku,
-                        "stock": stock_value,
-                        "reserved": 0  # Analytics не возвращает reserved
-                    })
-                
-                if stocks_data:
-                    logger.info(f"Получено {len(stocks_data)} записей об остатках через analytics")
-                    # Логируем несколько примеров
-                    for i, stock_item in enumerate(stocks_data[:3]):
-                        logger.info(f"Пример остатка {i+1}: {stock_item}")
-                    return stocks_data
-            
-            logger.warning("Не удалось получить данные об остатках из API")
+            logger.warning("Не удалось получить данные об остатках из product_info")
             return []
             
         except Exception as e:

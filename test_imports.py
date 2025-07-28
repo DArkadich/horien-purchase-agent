@@ -19,7 +19,7 @@ def test_imports():
     """Тестирует импорт всех модулей"""
     try:
         logger.info("Тестирование импортов...")
-        
+    
         # Тестируем импорт конфигурации
         from config import validate_config, logger as config_logger
         logger.info("✓ Конфигурация импортирована")
@@ -91,8 +91,8 @@ def test_basic_functionality():
         logger.info(f"✓ Сгенерирован отчет для {len(report)} позиций")
         
         logger.info("✓ Базовая функциональность работает корректно")
-        return True
-        
+            return True
+            
     except Exception as e:
         logger.error(f"Ошибка тестирования функциональности: {e}")
         return False
