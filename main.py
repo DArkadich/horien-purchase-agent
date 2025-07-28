@@ -55,17 +55,23 @@ async def main():
         
         logger.info(f"Успешно получены товары: {len(products)} шт")
         
-        # Сохраняем текущие остатки в базу данных
+        # Сохранение данных об остатках
         logger.info("Сохранение данных об остатках...")
         current_stocks = ozon_api.get_stocks_data()
+        
+        # Отладочная информация
+        logger.info(f"Получено данных об остатках: {len(current_stocks) if current_stocks else 0}")
+        if current_stocks:
+            logger.info(f"Пример данных об остатках: {current_stocks[:2]}")  # Показываем первые 2 записи
+        
         if current_stocks:
             stock_tracker.save_daily_stocks(current_stocks)
             logger.info(f"Сохранено {len(current_stocks)} записей об остатках")
             
             # Очистка синтетических данных и запись реальных остатков
-            # logger.info("Очистка синтетических данных и запись реальных остатков...")
-            # sheets.clear_all_synthetic_data()
-            # sheets.write_stock_data(current_stocks)
+            logger.info("Очистка синтетических данных и запись реальных остатков...")
+            sheets.clear_all_synthetic_data()
+            sheets.write_stock_data(current_stocks)
         else:
             logger.warning("Нет данных об остатках для сохранения")
         
