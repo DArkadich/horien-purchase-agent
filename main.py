@@ -9,6 +9,7 @@ import pandas as pd
 from datetime import datetime
 from typing import Dict, List, Any
 import os
+import asyncio
 
 # Импорты модулей
 from config import validate_config, logger
@@ -22,7 +23,7 @@ from stock_tracker import StockTracker
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def main():
+async def main():
     """Основная функция агента закупок"""
     start_time = time.time()
     
@@ -40,7 +41,7 @@ def main():
         stock_tracker = StockTracker()
         
         # Отправка уведомления о запуске
-        telegram.send_message("🚀 Агент закупок Horiens запущен")
+        await telegram.send_message("🚀 Агент закупок Horiens запущен")
         
         # Получение данных из Ozon API
         logger.info("Получение данных из Ozon API...")
@@ -49,7 +50,7 @@ def main():
         products = ozon_api.get_products()
         if not products:
             logger.error("Не удалось получить товары")
-            telegram.send_message("❌ Ошибка: Не удалось получить товары из Ozon API")
+            await telegram.send_message("❌ Ошибка: Не удалось получить товары из Ozon API")
             return
         
         logger.info(f"Успешно получены товары: {len(products)} шт")
@@ -69,7 +70,7 @@ def main():
         
         if not sales_data:
             logger.warning("Нет данных о продажах из истории остатков")
-            telegram.send_message("⚠️ Предупреждение: Нет данных о продажах для анализа")
+            await telegram.send_message("⚠️ Предупреждение: Нет данных о продажах для анализа")
             return
         
         logger.info(f"Получено {len(sales_data)} записей о продажах из истории остатков")
@@ -80,7 +81,7 @@ def main():
         
         if not stocks_data:
             logger.warning("Нет данных об остатках")
-            telegram.send_message("⚠️ Предупреждение: Нет данных об остатках для анализа")
+            await telegram.send_message("⚠️ Предупреждение: Нет данных об остатках для анализа")
             return
         
         logger.info(f"Получено {len(stocks_data)} записей об остатках")
@@ -119,7 +120,7 @@ def main():
         
         if not forecast_data:
             logger.error("Не удалось рассчитать прогноз закупок")
-            telegram.send_message("❌ Ошибка: Не удалось рассчитать прогноз закупок")
+            await telegram.send_message("❌ Ошибка: Не удалось рассчитать прогноз закупок")
             return
         
         logger.info(f"Рассчитан прогноз для {len(forecast_data)} позиций")
@@ -130,7 +131,7 @@ def main():
         
         if not report_data:
             logger.error("Не удалось сгенерировать отчет о закупках")
-            telegram.send_message("❌ Ошибка: Не удалось сгенерировать отчет о закупках")
+            await telegram.send_message("❌ Ошибка: Не удалось сгенерировать отчет о закупках")
             return
         
         logger.info(f"Сгенерирован отчет для {len(report_data)} SKU")
@@ -147,12 +148,12 @@ def main():
         
         # Отправка отчета в Telegram
         logger.info("Отправка отчета в Telegram...")
-        telegram.send_purchase_report(report_data)
+        await telegram.send_purchase_report(report_data)
         logger.info("Отчет о закупках отправлен в Telegram")
         
         # Отправка итогового уведомления
         execution_time = time.time() - start_time
-        telegram.send_message(
+        await telegram.send_message(
             f"✅ Агент закупок завершил работу за {execution_time:.2f} секунд\n"
             f"📊 Обработано {len(report_data)} позиций для закупки"
         )
@@ -166,9 +167,9 @@ def main():
         logger.error("Ошибка в работе агента закупок: %s", str(e))
         try:
             if 'telegram' in locals():
-                telegram.send_message(f"❌ Ошибка в работе агента закупок: {str(e)}")
+                await telegram.send_message(f"❌ Ошибка в работе агента закупок: {str(e)}")
         except Exception as telegram_error:
             logger.error("Не удалось отправить сообщение об ошибке в Telegram: %s", str(telegram_error))
 
 if __name__ == "__main__":
-    main() 
+    asyncio.run(main()) 

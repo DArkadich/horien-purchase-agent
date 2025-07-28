@@ -188,11 +188,21 @@ class OzonAPI:
                 elif 'stocks' in product:
                     # Альтернативный формат
                     stocks = product['stocks']
-                    stocks_data.append({
-                        "sku": product.get('sku', ''),
-                        "stock": stocks.get('stock', 0),
-                        "reserved": stocks.get('reserved', 0)
-                    })
+                    if 'stocks' in stocks and isinstance(stocks['stocks'], list):
+                        # Новый формат с массивом stocks
+                        for stock_item in stocks['stocks']:
+                            stocks_data.append({
+                                "sku": stock_item.get('sku', ''),
+                                "stock": stock_item.get('present', 0),
+                                "reserved": stock_item.get('reserved', 0)
+                            })
+                    else:
+                        # Старый формат
+                        stocks_data.append({
+                            "sku": product.get('sku', ''),
+                            "stock": stocks.get('stock', 0),
+                            "reserved": stocks.get('reserved', 0)
+                        })
             
             if stocks_data:
                 logger.info(f"Получено {len(stocks_data)} записей об остатках")
