@@ -111,7 +111,9 @@ class TelegramNotifier:
         """
         Отправляет уведомление об ошибке
         """
-        message = f"❌ <b>Ошибка в работе агента закупок</b>\n\n{error_message}"
+        # Очищаем сообщение от HTML тегов для безопасности
+        clean_message = error_message.replace('<', '&lt;').replace('>', '&gt;')
+        message = f"❌ <b>Ошибка в работе агента закупок</b>\n\n{clean_message}"
         await self.send_message(message)
     
     async def send_startup_notification(self):
