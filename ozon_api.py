@@ -178,6 +178,11 @@ class OzonAPI:
             
             stocks_data = []
             for product in product_info:
+                # Проверяем, есть ли ошибки в товаре
+                if 'errors' in product and product['errors']:
+                    logger.debug(f"Товар {product.get('id', 'unknown')} имеет ошибки: {product['errors']}")
+                    continue
+                
                 if 'stock_info' in product:
                     stock_info = product['stock_info']
                     stocks_data.append({
@@ -188,7 +193,7 @@ class OzonAPI:
                 elif 'stocks' in product:
                     # Альтернативный формат
                     stocks = product['stocks']
-                    if 'stocks' in stocks and isinstance(stocks['stocks'], list):
+                    if 'stocks' in stocks and isinstance(stocks['stocks'], list) and stocks['stocks']:
                         # Новый формат с массивом stocks
                         for stock_item in stocks['stocks']:
                             stocks_data.append({
@@ -196,8 +201,15 @@ class OzonAPI:
                                 "stock": stock_item.get('present', 0),
                                 "reserved": stock_item.get('reserved', 0)
                             })
+                    elif 'has_stock' in stocks and stocks['has_stock']:
+                        # Есть остатки, но нет детальной информации
+                        stocks_data.append({
+                            "sku": product.get('sku', ''),
+                            "stock": 1,  # Минимальное значение
+                            "reserved": 0
+                        })
                     else:
-                        # Старый формат
+                        # Старый формат или нет остатков
                         stocks_data.append({
                             "sku": product.get('sku', ''),
                             "stock": stocks.get('stock', 0),
@@ -274,6 +286,14 @@ class OzonAPI:
         
         if result and "items" in result:
             logger.info(f"Получена информация о {len(result['items'])} товарах")
+            
+            # Логируем структуру первого товара для отладки
+            if result['items']:
+                first_item = result['items'][0]
+                logger.debug(f"Структура первого товара: {list(first_item.keys())}")
+                if 'stocks' in first_item:
+                    logger.debug(f"Структура stocks: {first_item['stocks']}")
+            
             return result["items"]
         
         return []
