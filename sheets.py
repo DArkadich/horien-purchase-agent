@@ -357,19 +357,19 @@ class GoogleSheets:
             ]
             rows.append(row)
         
-        # Записываем в лист "Остатки"
-        range_name = f"Остатки!A1:E{len(rows)}"
+        # Записываем в лист "Stocks" (английское название)
+        range_name = f"Stocks!A1:E{len(rows)}"
         
         try:
             # Очищаем существующие данные
-            clear_range = f"Остатки!A1:E{len(rows) + 10}"
+            clear_range = f"Stocks!A1:E{len(rows) + 10}"
             self.clear_sheet_range(clear_range)
             
             # Записываем новые данные
             self.update_sheet_data(range_name, rows)
             
             # Форматируем заголовок
-            self.format_header("Остатки!A1:E1")
+            self.format_header("Stocks!A1:E1")
             
             logger.info(f"Данные об остатках записаны в Google Sheets: {len(stock_data)} позиций")
             
@@ -385,7 +385,7 @@ class GoogleSheets:
         
         try:
             # Очищаем основные листы
-            sheets_to_clear = ['Sheet1', 'Summary', 'Остатки']
+            sheets_to_clear = ['Sheet1', 'Summary', 'Stocks']
             
             for sheet_name in sheets_to_clear:
                 try:
