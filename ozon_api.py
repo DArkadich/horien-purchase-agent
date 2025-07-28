@@ -301,21 +301,27 @@ class OzonAPI:
                     logger.info(f"Пример данных от analytics: {first_item}")
                 
                 for item in result["data"]:
-                    # Проверяем все возможные поля для остатков
+                    # Правильный парсинг данных от analytics API
+                    sku = ""
                     stock_value = 0
-                    if 'stock' in item and item['stock'] is not None:
+                    
+                    # Извлекаем SKU из dimensions
+                    if 'dimensions' in item and item['dimensions']:
+                        for dimension in item['dimensions']:
+                            if 'id' in dimension:
+                                sku = str(dimension['id'])
+                                break
+                    
+                    # Извлекаем значение остатка из metrics
+                    if 'metrics' in item and item['metrics']:
+                        # Берем первое значение из metrics как остаток
                         try:
-                            stock_value = int(item['stock'])
-                        except (ValueError, TypeError):
-                            stock_value = 0
-                    elif 'present' in item and item['present'] is not None:
-                        try:
-                            stock_value = int(item['present'])
-                        except (ValueError, TypeError):
+                            stock_value = int(item['metrics'][0])
+                        except (ValueError, TypeError, IndexError):
                             stock_value = 0
                     
                     stocks_data.append({
-                        "sku": item.get('sku', ''),
+                        "sku": sku,
                         "stock": stock_value,
                         "reserved": 0  # Analytics не возвращает reserved
                     })
