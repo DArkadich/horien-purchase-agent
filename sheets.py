@@ -59,7 +59,7 @@ class GoogleSheets:
             logger.info(f"Существующие листы: {existing_sheets}")
             
             # Проверяем наличие необходимых листов
-            required_sheets = ['Sheet1', 'Summary']
+            required_sheets = ['Sheet1', 'Summary', 'Stocks']
             missing_sheets = [sheet for sheet in required_sheets if sheet not in existing_sheets]
             
             if missing_sheets:
@@ -334,6 +334,9 @@ class GoogleSheets:
         if not stock_data:
             logger.warning("Нет данных об остатках для записи в таблицу")
             return
+        
+        # Убеждаемся, что лист Stocks существует
+        self._ensure_sheets_exist()
         
         # Подготавливаем заголовки
         headers = [
