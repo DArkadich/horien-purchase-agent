@@ -338,6 +338,11 @@ class GoogleSheets:
         # Убеждаемся, что лист Stocks существует
         self._ensure_sheets_exist()
         
+        # Логируем входящие данные для отладки
+        logger.info(f"Получено {len(stock_data)} записей об остатках для записи")
+        for i, item in enumerate(stock_data[:3]):  # Показываем первые 3 записи
+            logger.info(f"Пример данных остатка {i+1}: {item}")
+        
         # Подготавливаем заголовки
         headers = [
             'SKU',
@@ -350,15 +355,32 @@ class GoogleSheets:
         # Подготавливаем данные
         rows = [headers]
         for item in stock_data:
-            available = item.get('stock', 0) - item.get('reserved', 0)
+            stock_value = item.get('stock', 0)
+            reserved_value = item.get('reserved', 0)
+            available = stock_value - reserved_value
+            
+            # Проверяем типы данных
+            if not isinstance(stock_value, (int, float)):
+                logger.warning(f"Неправильный тип данных для stock: {type(stock_value)}, значение: {stock_value}")
+                stock_value = 0
+            
+            if not isinstance(reserved_value, (int, float)):
+                logger.warning(f"Неправильный тип данных для reserved: {type(reserved_value)}, значение: {reserved_value}")
+                reserved_value = 0
+            
             row = [
                 item.get('sku', ''),
-                item.get('stock', 0),
-                item.get('reserved', 0),
+                stock_value,
+                reserved_value,
                 available,
                 datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             ]
             rows.append(row)
+        
+        # Логируем подготовленные строки
+        logger.info(f"Подготовлено {len(rows)} строк для записи")
+        for i, row in enumerate(rows[:3]):  # Показываем первые 3 строки
+            logger.info(f"Пример строки {i+1}: {row}")
         
         # Записываем в лист "Stocks" (английское название)
         range_name = f"Stocks!A1:E{len(rows)}"

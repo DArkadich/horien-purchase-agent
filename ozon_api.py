@@ -293,15 +293,38 @@ class OzonAPI:
             
             if result and "data" in result:
                 stocks_data = []
+                logger.info(f"Получены данные от analytics API: {len(result['data'])} записей")
+                
+                # Логируем первую запись для отладки
+                if result['data']:
+                    first_item = result['data'][0]
+                    logger.info(f"Пример данных от analytics: {first_item}")
+                
                 for item in result["data"]:
+                    # Проверяем все возможные поля для остатков
+                    stock_value = 0
+                    if 'stock' in item and item['stock'] is not None:
+                        try:
+                            stock_value = int(item['stock'])
+                        except (ValueError, TypeError):
+                            stock_value = 0
+                    elif 'present' in item and item['present'] is not None:
+                        try:
+                            stock_value = int(item['present'])
+                        except (ValueError, TypeError):
+                            stock_value = 0
+                    
                     stocks_data.append({
                         "sku": item.get('sku', ''),
-                        "stock": item.get('stock', 0),
+                        "stock": stock_value,
                         "reserved": 0  # Analytics не возвращает reserved
                     })
                 
                 if stocks_data:
                     logger.info(f"Получено {len(stocks_data)} записей об остатках через analytics")
+                    # Логируем несколько примеров
+                    for i, stock_item in enumerate(stocks_data[:3]):
+                        logger.info(f"Пример остатка {i+1}: {stock_item}")
                     return stocks_data
             
             logger.warning("Не удалось получить данные об остатках из API")
