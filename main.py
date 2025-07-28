@@ -15,7 +15,7 @@ from config import validate_config, logger
 from ozon_api import OzonAPI
 from sheets import GoogleSheets
 from telegram_notify import TelegramNotifier
-from forecast import ForecastCalculator
+from forecast import PurchaseForecast
 from stock_tracker import StockTracker
 
 # Настройка логирования
@@ -108,8 +108,14 @@ def main():
         
         # Расчет прогноза закупок
         logger.info("Расчет прогноза закупок...")
-        calculator = ForecastCalculator()
-        forecast_data = calculator.calculate_purchase_forecast(sales_df, stocks_df)
+        calculator = PurchaseForecast()
+        
+        # Подготавливаем данные
+        sales_df = calculator.prepare_sales_data(sales_data)
+        stocks_df = calculator.prepare_stocks_data(stocks_data)
+        
+        # Рассчитываем прогноз
+        forecast_data = calculator.calculate_forecast(sales_df, stocks_df)
         
         if not forecast_data:
             logger.error("Не удалось рассчитать прогноз закупок")
