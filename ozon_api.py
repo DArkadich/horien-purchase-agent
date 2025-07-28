@@ -166,6 +166,15 @@ class OzonAPI:
             
             # Извлекаем ID товаров
             product_ids = [product.get('id') for product in products if product.get('id')]
+            
+            # Отладочная информация
+            logger.info(f"Получено {len(products)} товаров")
+            if products:
+                logger.info(f"Пример структуры товара: {list(products[0].keys())}")
+                logger.info(f"Первый товар: {products[0]}")
+            
+            logger.info(f"Извлечено {len(product_ids)} ID товаров: {product_ids[:5]}")  # Показываем первые 5
+            
             if not product_ids:
                 logger.warning("Нет ID товаров для получения остатков")
                 return []
