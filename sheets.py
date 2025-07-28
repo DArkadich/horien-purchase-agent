@@ -38,9 +38,58 @@ class GoogleSheets:
             
             logger.info("Успешная аутентификация в Google Sheets API")
             
+            # Проверяем и создаем необходимые листы
+            self._ensure_sheets_exist()
+            
         except Exception as e:
             logger.error(f"Ошибка аутентификации в Google Sheets API: {e}")
             raise
+    
+    def _ensure_sheets_exist(self):
+        """
+        Проверяет существование необходимых листов и создает их при необходимости
+        """
+        try:
+            # Получаем информацию о таблице
+            spreadsheet = self.service.spreadsheets().get(
+                spreadsheetId=self.spreadsheet_id
+            ).execute()
+            
+            existing_sheets = [sheet['properties']['title'] for sheet in spreadsheet['sheets']]
+            logger.info(f"Существующие листы: {existing_sheets}")
+            
+            # Проверяем наличие необходимых листов
+            required_sheets = ['Sheet1', 'Summary']
+            missing_sheets = [sheet for sheet in required_sheets if sheet not in existing_sheets]
+            
+            if missing_sheets:
+                logger.info(f"Создаем недостающие листы: {missing_sheets}")
+                
+                requests = []
+                for sheet_name in missing_sheets:
+                    requests.append({
+                        'addSheet': {
+                            'properties': {
+                                'title': sheet_name
+                            }
+                        }
+                    })
+                
+                if requests:
+                    body = {'requests': requests}
+                    self.service.spreadsheets().batchUpdate(
+                        spreadsheetId=self.spreadsheet_id,
+                        body=body
+                    ).execute()
+                    
+                    logger.info(f"Созданы листы: {missing_sheets}")
+            else:
+                logger.info("Все необходимые листы существуют")
+                
+        except Exception as e:
+            logger.error(f"Ошибка проверки/создания листов: {e}")
+            # Не прерываем выполнение, продолжаем работу
+            pass
     
     def get_sheet_data(self, range_name: str) -> List[List[Any]]:
         """
@@ -87,11 +136,12 @@ class GoogleSheets:
         Очищает указанный диапазон листа
         """
         try:
-            # Используем более простой подход - всегда заключаем имя листа в кавычки
+            # Используем простой подход без кавычек
             if "!" in range_name:
                 sheet_name, cell_range = range_name.split("!", 1)
-                # Всегда заключаем имя листа в кавычки для надежности
-                range_name = f"'{sheet_name}'!{cell_range}"
+                # Убираем кавычки если они есть
+                sheet_name = sheet_name.strip("'")
+                range_name = f"{sheet_name}!{cell_range}"
             
             self.service.spreadsheets().values().clear(
                 spreadsheetId=self.spreadsheet_id,
@@ -193,19 +243,19 @@ class GoogleSheets:
             ]
             rows.append(row)
         
-        # Используем более простой подход - всегда заключаем имя листа в кавычки
-        range_name = f"'Sheet1'!A1:H{len(rows)}"
+        # Используем простой подход без кавычек
+        range_name = f"Sheet1!A1:H{len(rows)}"
         
         try:
             # Очищаем существующие данные (конкретный диапазон)
-            clear_range = f"'Sheet1'!A1:H{len(rows) + 10}"  # Очищаем с запасом
+            clear_range = f"Sheet1!A1:H{len(rows) + 10}"  # Очищаем с запасом
             self.clear_sheet_range(clear_range)
             
             # Записываем новые данные
             self.update_sheet_data(range_name, rows)
             
             # Форматируем заголовок
-            self.format_header("'Sheet1'!A1:H1")
+            self.format_header("Sheet1!A1:H1")
             
             logger.info(f"Отчет о закупках записан в Google Sheets: {len(report_data)} позиций")
             
@@ -220,11 +270,11 @@ class GoogleSheets:
         """
         try:
             # Получаем данные из колонки с датами последних заказов
-            range_name = "'Sheet1'!H2:H"
+            range_name = "Sheet1!H2:H"
             values = self.get_sheet_data(range_name)
             
             # Получаем SKU из первой колонки
-            sku_range = "'Sheet1'!A2:A"
+            sku_range = "Sheet1!A2:A"
             sku_values = self.get_sheet_data(sku_range)
             
             last_orders = {}
@@ -269,8 +319,8 @@ class GoogleSheets:
                 f"Хватит на {item['days_until_stockout']} дней"
             ])
         
-        # Записываем в отдельный лист с кавычками
-        range_name = f"'Summary'!A1:C{len(summary_rows)}"
+        # Записываем в отдельный лист без кавычек
+        range_name = f"Summary!A1:C{len(summary_rows)}"
         self.update_sheet_data(range_name, summary_rows)
         
         logger.info("Сводный лист создан") 
