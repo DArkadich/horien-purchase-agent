@@ -346,6 +346,7 @@ class GoogleSheets:
         # Подготавливаем заголовки
         headers = [
             'SKU',
+            'Название товара',
             'Остаток',
             'Зарезервировано',
             'Доступно',
@@ -370,6 +371,7 @@ class GoogleSheets:
             
             row = [
                 item.get('sku', ''),
+                item.get('name', ''),
                 stock_value,
                 reserved_value,
                 available,
@@ -383,18 +385,18 @@ class GoogleSheets:
             logger.info(f"Пример строки {i+1}: {row}")
         
         # Записываем в лист "Stocks" (английское название)
-        range_name = f"Stocks!A1:E{len(rows)}"
+        range_name = f"Stocks!A1:F{len(rows)}"
         
         try:
             # Очищаем существующие данные
-            clear_range = f"Stocks!A1:E{len(rows) + 10}"
+            clear_range = f"Stocks!A1:F{len(rows) + 10}"
             self.clear_sheet_range(clear_range)
             
             # Записываем новые данные
             self.update_sheet_data(range_name, rows)
             
             # Форматируем заголовок
-            self.format_header("Stocks!A1:E1")
+            self.format_header("Stocks!A1:F1")
             
             logger.info(f"Данные об остатках записаны в Google Sheets: {len(stock_data)} позиций")
             

@@ -191,6 +191,7 @@ class OzonAPI:
                 
                 # Используем offer_id как SKU
                 sku = product.get('offer_id', '')
+                name = product.get('name', '')
                 
                 if 'stocks' in product:
                     stocks = product['stocks']
@@ -199,6 +200,7 @@ class OzonAPI:
                         for stock_item in stocks['stocks']:
                             stocks_data.append({
                                 "sku": sku,
+                                "name": name,
                                 "stock": stock_item.get('present', 0),
                                 "reserved": stock_item.get('reserved', 0)
                             })
@@ -206,6 +208,7 @@ class OzonAPI:
                         # Есть остатки, но нет детальной информации
                         stocks_data.append({
                             "sku": sku,
+                            "name": name,
                             "stock": 1,  # Минимальное значение
                             "reserved": 0
                         })
@@ -213,6 +216,7 @@ class OzonAPI:
                         # Старый формат или нет остатков
                         stocks_data.append({
                             "sku": sku,
+                            "name": name,
                             "stock": stocks.get('stock', 0),
                             "reserved": stocks.get('reserved', 0)
                         })
