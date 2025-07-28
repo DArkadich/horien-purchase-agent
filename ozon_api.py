@@ -184,11 +184,6 @@ class OzonAPI:
             
             stocks_data = []
             for product in product_info:
-                # Проверяем, есть ли ошибки в товаре
-                if 'errors' in product and product['errors']:
-                    logger.debug(f"Товар {product.get('id', 'unknown')} имеет ошибки: {product['errors']}")
-                    continue
-                
                 # Используем offer_id как SKU
                 sku = product.get('offer_id', '')
                 name = product.get('name', '')
@@ -220,16 +215,22 @@ class OzonAPI:
                             "reserved": 0
                         })
                     else:
-                        # Старый формат или нет остатков
-                        logger.info(f"Товар {sku} не имеет остатков или использует старый формат")
+                        # Нет остатков - все равно добавляем товар с нулевыми остатками
+                        logger.info(f"Товар {sku} не имеет остатков - добавляем с нулевыми остатками")
                         stocks_data.append({
                             "sku": sku,
                             "name": name,
-                            "stock": stocks.get('stock', 0),
-                            "reserved": stocks.get('reserved', 0)
+                            "stock": 0,
+                            "reserved": 0
                         })
                 else:
-                    logger.info(f"Товар {sku} не имеет поля stocks")
+                    logger.info(f"Товар {sku} не имеет поля stocks - добавляем с нулевыми остатками")
+                    stocks_data.append({
+                        "sku": sku,
+                        "name": name,
+                        "stock": 0,
+                        "reserved": 0
+                    })
             
             if stocks_data:
                 logger.info(f"Получено {len(stocks_data)} записей об остатках из product_info")
