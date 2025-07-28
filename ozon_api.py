@@ -87,6 +87,9 @@ class OzonAPI:
         result = self._make_request(endpoint, data)
         if result and "items" in result:
             logger.info(f"Успешно получены товары: {len(result['items'])} шт")
+            # Логируем первые несколько товаров для отладки
+            for i, product in enumerate(result["items"][:3]):
+                logger.debug(f"Товар {i+1}: ID={product.get('id')}, Offer={product.get('offer_id')}, Name={product.get('name')}")
             return result["items"]
         
         logger.warning("Не удалось получить товары через API, используем тестовые данные")
@@ -130,6 +133,11 @@ class OzonAPI:
             "limit": 1000,
             "offset": 0
         }
+        
+        # Проверяем, что даты в правильном порядке
+        if start_date >= end_date:
+            logger.warning("Неправильный порядок дат, используем тестовые данные")
+            return self._generate_test_sales_data(days)
         
         sales_data = []
         offset = 0
@@ -204,7 +212,8 @@ class OzonAPI:
         stocks_data = []
         for product in products:
             if "id" in product:
-                endpoint = "/v3/product/info/stocks"
+                # Попробуем другой эндпоинт для остатков
+                endpoint = "/v2/product/info/stocks"
                 data = {
                     "product_id": product["id"]
                 }
