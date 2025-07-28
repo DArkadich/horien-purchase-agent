@@ -133,20 +133,27 @@ class OzonAPI:
         
         # Генерируем реалистичные данные на основе реальных товаров
         sales_data = []
+        import random
+        
+        # Генерируем продажи только для части товаров и не каждый день
         for i in range(days):
             date = datetime.now() - timedelta(days=i)
-            for sku in real_skus:
-                # Генерируем случайные продажи
-                import random
-                quantity = random.randint(0, 10)  # Реалистичные объемы
-                revenue = quantity * random.randint(500, 2000)  # Реалистичные цены
-                
-                sales_data.append({
-                    "sku": sku,
-                    "date": date.strftime("%Y-%m-%d"),
-                    "quantity": quantity,
-                    "revenue": revenue
-                })
+            
+            # Выбираем случайные товары для продаж (не все сразу)
+            active_skus = random.sample(real_skus, min(10, len(real_skus)))  # Максимум 10 товаров в день
+            
+            for sku in active_skus:
+                # Генерируем продажи только с некоторой вероятностью
+                if random.random() < 0.3:  # 30% вероятность продажи
+                    quantity = random.randint(1, 5)  # Реалистичные объемы
+                    revenue = quantity * random.randint(500, 2000)  # Реалистичные цены
+                    
+                    sales_data.append({
+                        "sku": sku,
+                        "date": date.strftime("%Y-%m-%d"),
+                        "quantity": quantity,
+                        "revenue": revenue
+                    })
         
         logger.info(f"Сгенерировано {len(sales_data)} записей о продажах на основе {len(real_skus)} реальных товаров")
         return sales_data
@@ -193,15 +200,17 @@ class OzonAPI:
         
         for product in products:
             if "offer_id" in product:
-                # Генерируем реалистичные остатки
-                stock = random.randint(10, 500)  # Реалистичные остатки
-                reserved = random.randint(0, min(50, stock))  # Зарезервированные
-                
-                stocks_data.append({
-                    "sku": product["offer_id"],
-                    "stock": stock,
-                    "reserved": reserved
-                })
+                # Не все товары должны иметь остатки
+                if random.random() < 0.7:  # 70% товаров имеют остатки
+                    # Генерируем реалистичные остатки
+                    stock = random.randint(5, 200)  # Реалистичные остатки
+                    reserved = random.randint(0, min(20, stock))  # Зарезервированные
+                    
+                    stocks_data.append({
+                        "sku": product["offer_id"],
+                        "stock": stock,
+                        "reserved": reserved
+                    })
         
         if stocks_data:
             logger.info(f"Сгенерировано {len(stocks_data)} записей об остатках на основе {len(products)} реальных товаров")
