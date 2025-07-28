@@ -164,8 +164,8 @@ class OzonAPI:
                 logger.warning("Нет товаров для получения остатков")
                 return []
             
-            # Извлекаем ID товаров
-            product_ids = [product.get('id') for product in products if product.get('id')]
+            # Извлекаем ID товаров (используем offer_id)
+            product_ids = [product.get('offer_id') for product in products if product.get('offer_id')]
             
             # Отладочная информация
             logger.info(f"Получено {len(products)} товаров")
@@ -173,10 +173,10 @@ class OzonAPI:
                 logger.info(f"Пример структуры товара: {list(products[0].keys())}")
                 logger.info(f"Первый товар: {products[0]}")
             
-            logger.info(f"Извлечено {len(product_ids)} ID товаров: {product_ids[:5]}")  # Показываем первые 5
+            logger.info(f"Извлечено {len(product_ids)} offer_id товаров: {product_ids[:5]}")  # Показываем первые 5
             
             if not product_ids:
-                logger.warning("Нет ID товаров для получения остатков")
+                logger.warning("Нет offer_id товаров для получения остатков")
                 return []
             
             # Получаем информацию о товарах с остатками
@@ -251,15 +251,16 @@ class OzonAPI:
         
         return stocks_data
     
-    def get_product_info(self, product_ids: List[int]) -> List[Dict[str, Any]]:
+    def get_product_info(self, offer_ids: List[str]) -> List[Dict[str, Any]]:
         """
-        Получает детальную информацию о товарах
+        Получает детальную информацию о товарах по offer_id
         """
-        logger.info(f"Получение информации о {len(product_ids)} товарах...")
+        logger.info(f"Получение информации о {len(offer_ids)} товарах по offer_id...")
         
+        # Используем endpoint для получения информации по offer_id
         endpoint = "/v3/product/info/list"
         data = {
-            "product_id": product_ids
+            "offer_id": offer_ids
         }
         
         result = self._make_request(endpoint, data)
