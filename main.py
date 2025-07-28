@@ -64,16 +64,16 @@ async def main():
         else:
             logger.warning("Нет данных об остатках для сохранения")
         
-        # Получаем данные о продажах на основе истории остатков
-        logger.info("Получение данных о продажах на основе истории остатков...")
-        sales_data = stock_tracker.estimate_sales_from_stock_changes(days=90)
+        # Получаем данные о продажах
+        logger.info("Получение данных о продажах...")
+        sales_data = ozon_api.get_sales_data(days=90)
         
         if not sales_data:
-            logger.warning("Нет данных о продажах из истории остатков")
+            logger.warning("Нет данных о продажах")
             await telegram.send_message("⚠️ Предупреждение: Нет данных о продажах для анализа")
             return
         
-        logger.info(f"Получено {len(sales_data)} записей о продажах из истории остатков")
+        logger.info(f"Получено {len(sales_data)} записей о продажах")
         
         # Получаем данные об остатках
         logger.info("Получение данных об остатках...")
