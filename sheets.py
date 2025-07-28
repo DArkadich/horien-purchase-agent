@@ -184,18 +184,18 @@ class GoogleSheets:
             ]
             rows.append(row)
         
-        # Используем английское название листа для избежания проблем с кодировкой
-        range_name = 'AI-Purchases!A1:H' + str(len(rows))
+        # Используем первый лист (Sheet1) для избежания проблем с названиями
+        range_name = 'Sheet1!A1:H' + str(len(rows))
         
         try:
             # Очищаем существующие данные
-            self.clear_sheet_range('AI-Purchases!A:H')
+            self.clear_sheet_range('Sheet1!A:H')
             
             # Записываем новые данные
             self.update_sheet_data(range_name, rows)
             
             # Форматируем заголовок
-            self.format_header('AI-Purchases!A1:H1')
+            self.format_header('Sheet1!A1:H1')
             
             logger.info(f"Отчет о закупках записан в Google Sheets: {len(report_data)} позиций")
             
@@ -209,11 +209,11 @@ class GoogleSheets:
         """
         try:
             # Получаем данные из колонки с датами последних заказов
-            range_name = 'AI-Purchases!H2:H'
+            range_name = 'Sheet1!H2:H'
             values = self.get_sheet_data(range_name)
             
             # Получаем SKU из первой колонки
-            sku_range = 'AI-Purchases!A2:A'
+            sku_range = 'Sheet1!A2:A'
             sku_values = self.get_sheet_data(sku_range)
             
             last_orders = {}
