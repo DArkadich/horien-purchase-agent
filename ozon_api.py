@@ -121,8 +121,36 @@ class OzonAPI:
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
         
-        # Пробуем различные эндпоинты для получения заказов
+        # Пробуем различные эндпоинты для получения продаж
         endpoints_to_try = [
+            ("/v1/sales/list", {
+                "limit": 1000,
+                "offset": 0,
+                "since": start_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "to": end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+            }),
+            ("/v2/sales/list", {
+                "limit": 1000,
+                "offset": 0,
+                "since": start_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "to": end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+            }),
+            ("/v3/sales/list", {
+                "limit": 1000,
+                "offset": 0,
+                "since": start_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "to": end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+            }),
+            ("/v1/analytics/sales", {
+                "date_from": start_date.strftime("%Y-%m-%d"),
+                "date_to": end_date.strftime("%Y-%m-%d")
+            }),
+            ("/v1/report/list", {
+                "report_type": "SELLER_SALES",
+                "page_size": 1000,
+                "page": 1
+            }),
+            # Также пробуем заказы как fallback
             ("/v1/order/list", {
                 "limit": 1000,
                 "offset": 0,
@@ -140,18 +168,6 @@ class OzonAPI:
                 "offset": 0,
                 "since": start_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "to": end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
-            }),
-            ("/v4/order/list", {
-                "limit": 1000,
-                "offset": 0,
-                "since": start_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "to": end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
-            }),
-            ("/v5/order/list", {
-                "limit": 1000,
-                "offset": 0,
-                "since": start_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "to": end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
             })
         ]
         
@@ -159,21 +175,55 @@ class OzonAPI:
             logger.info(f"Пробуем эндпоинт: {endpoint}")
             result = self._make_request(endpoint, data)
             
-            if result and "orders" in result and result["orders"]:
-                sales_data = []
-                for order in result["orders"]:
-                    if "items" in order:
-                        for item in order["items"]:
-                            sales_data.append({
-                                "sku": item.get("offer_id", ""),
-                                "date": order.get("created_at", "").split("T")[0],
-                                "quantity": item.get("quantity", 0),
-                                "revenue": item.get("price", {}).get("price", 0)
-                            })
+            sales_data = []
+            
+            # Обрабатываем разные форматы ответов
+            if result:
+                # Формат с orders
+                if "orders" in result and result["orders"]:
+                    for order in result["orders"]:
+                        if "items" in order:
+                            for item in order["items"]:
+                                sales_data.append({
+                                    "sku": item.get("offer_id", ""),
+                                    "date": order.get("created_at", "").split("T")[0],
+                                    "quantity": item.get("quantity", 0),
+                                    "revenue": item.get("price", {}).get("price", 0)
+                                })
                 
-                if sales_data:
-                    logger.info(f"Получено {len(sales_data)} записей о продажах из {endpoint}")
-                    return sales_data
+                # Формат с sales
+                elif "sales" in result and result["sales"]:
+                    for sale in result["sales"]:
+                        sales_data.append({
+                            "sku": sale.get("offer_id", ""),
+                            "date": sale.get("date", ""),
+                            "quantity": sale.get("quantity", 0),
+                            "revenue": sale.get("revenue", 0)
+                        })
+                
+                # Формат с items
+                elif "items" in result and result["items"]:
+                    for item in result["items"]:
+                        sales_data.append({
+                            "sku": item.get("offer_id", ""),
+                            "date": item.get("date", ""),
+                            "quantity": item.get("quantity", 0),
+                            "revenue": item.get("revenue", 0)
+                        })
+                
+                # Формат аналитики
+                elif "data" in result and result["data"]:
+                    for data_point in result["data"]:
+                        sales_data.append({
+                            "sku": data_point.get("sku", ""),
+                            "date": data_point.get("date", ""),
+                            "quantity": data_point.get("quantity", 0),
+                            "revenue": data_point.get("revenue", 0)
+                        })
+            
+            if sales_data:
+                logger.info(f"Получено {len(sales_data)} записей о продажах из {endpoint}")
+                return sales_data
         
         # Если ни один эндпоинт не работает, возвращаем пустой список
         logger.warning("Не удалось получить данные о продажах ни из одного эндпоинта")

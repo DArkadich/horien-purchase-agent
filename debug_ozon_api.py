@@ -199,6 +199,47 @@ def debug_ozon_api():
                 "limit": 10,
                 "offset": 0
             }
+        },
+        {
+            "name": "Продажи (v1)",
+            "endpoint": "/v1/sales/list",
+            "data": {
+                "limit": 10,
+                "offset": 0
+            }
+        },
+        {
+            "name": "Продажи (v2)",
+            "endpoint": "/v2/sales/list",
+            "data": {
+                "limit": 10,
+                "offset": 0
+            }
+        },
+        {
+            "name": "Продажи (v3)",
+            "endpoint": "/v3/sales/list",
+            "data": {
+                "limit": 10,
+                "offset": 0
+            }
+        },
+        {
+            "name": "Аналитика продаж",
+            "endpoint": "/v1/analytics/sales",
+            "data": {
+                "date_from": "2024-01-01",
+                "date_to": "2024-12-31"
+            }
+        },
+        {
+            "name": "Отчёт о продажах",
+            "endpoint": "/v1/report/list",
+            "data": {
+                "report_type": "SELLER_SALES",
+                "page_size": 100,
+                "page": 1
+            }
         }
     ]
     
