@@ -198,7 +198,8 @@ class OzonAPI:
         endpoint = "/v1/report/list"
         data = {
             "report_type": "SELLER_STOCK",
-            "page_size": 100
+            "page_size": 100,
+            "page": 1
         }
         
         result = self._make_request(endpoint, data)

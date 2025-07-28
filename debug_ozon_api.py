@@ -138,7 +138,8 @@ def debug_ozon_api():
             "endpoint": "/v1/report/list",
             "data": {
                 "report_type": "SELLER_STOCK",
-                "page_size": 100
+                "page_size": 100,
+                "page": 1
             }
         },
         {
@@ -162,7 +163,8 @@ def debug_ozon_api():
             "endpoint": "/v1/report/list",
             "data": {
                 "report_type": "SELLER_ORDERS",
-                "page_size": 100
+                "page_size": 100,
+                "page": 1
             }
         }
     ]
