@@ -41,6 +41,15 @@ class OzonAPI:
                 else:
                     logger.error(f"API вернул ошибку: {result}")
                     return None
+            elif response.status_code == 404:
+                logger.warning(f"Эндпоинт {endpoint} не найден (404). Возможно, используется неправильная версия API.")
+                return None
+            elif response.status_code == 401:
+                logger.error(f"Ошибка аутентификации (401). Проверьте API ключи.")
+                return None
+            elif response.status_code == 403:
+                logger.error(f"Ошибка доступа (403). Проверьте права доступа к API.")
+                return None
             else:
                 logger.error(f"API вернул статус {response.status_code}: {response.text}")
                 return None

@@ -87,12 +87,11 @@ class GoogleSheets:
         Очищает указанный диапазон листа
         """
         try:
-            # Убеждаемся, что диапазон правильно отформатирован
-            if not range_name.startswith("'") and "!" in range_name:
-                # Если диапазон содержит пробелы в имени листа, заключаем в кавычки
+            # Используем более простой подход - всегда заключаем имя листа в кавычки
+            if "!" in range_name:
                 sheet_name, cell_range = range_name.split("!", 1)
-                if " " in sheet_name:
-                    range_name = f"'{sheet_name}'!{cell_range}"
+                # Всегда заключаем имя листа в кавычки для надежности
+                range_name = f"'{sheet_name}'!{cell_range}"
             
             self.service.spreadsheets().values().clear(
                 spreadsheetId=self.spreadsheet_id,
@@ -194,19 +193,19 @@ class GoogleSheets:
             ]
             rows.append(row)
         
-        # Используем правильный формат диапазона
-        range_name = f"Sheet1!A1:H{len(rows)}"
+        # Используем более простой подход - всегда заключаем имя листа в кавычки
+        range_name = f"'Sheet1'!A1:H{len(rows)}"
         
         try:
             # Очищаем существующие данные (конкретный диапазон)
-            clear_range = f"Sheet1!A1:H{len(rows) + 10}"  # Очищаем с запасом
+            clear_range = f"'Sheet1'!A1:H{len(rows) + 10}"  # Очищаем с запасом
             self.clear_sheet_range(clear_range)
             
             # Записываем новые данные
             self.update_sheet_data(range_name, rows)
             
             # Форматируем заголовок
-            self.format_header('Sheet1!A1:H1')
+            self.format_header("'Sheet1'!A1:H1")
             
             logger.info(f"Отчет о закупках записан в Google Sheets: {len(report_data)} позиций")
             
@@ -221,11 +220,11 @@ class GoogleSheets:
         """
         try:
             # Получаем данные из колонки с датами последних заказов
-            range_name = 'Sheet1!H2:H'
+            range_name = "'Sheet1'!H2:H"
             values = self.get_sheet_data(range_name)
             
             # Получаем SKU из первой колонки
-            sku_range = 'Sheet1!A2:A'
+            sku_range = "'Sheet1'!A2:A"
             sku_values = self.get_sheet_data(sku_range)
             
             last_orders = {}
@@ -270,8 +269,8 @@ class GoogleSheets:
                 f"Хватит на {item['days_until_stockout']} дней"
             ])
         
-        # Записываем в отдельный лист
-        range_name = 'Summary!A1:C' + str(len(summary_rows))
+        # Записываем в отдельный лист с кавычками
+        range_name = f"'Summary'!A1:C{len(summary_rows)}"
         self.update_sheet_data(range_name, summary_rows)
         
         logger.info("Сводный лист создан") 
