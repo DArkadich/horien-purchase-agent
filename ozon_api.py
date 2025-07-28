@@ -73,6 +73,11 @@ class OzonAPI:
         data = {
             "limit": 1000,
             "offset": 0,
+            "filter": {
+                "visibility_details": {
+                    "active": True
+                }
+            },
             "with": {
                 "price": True,
                 "stock": True
@@ -199,7 +204,7 @@ class OzonAPI:
         stocks_data = []
         for product in products:
             if "id" in product:
-                endpoint = "/v1/product/info/stocks"
+                endpoint = "/v3/product/info/stocks"
                 data = {
                     "product_id": product["id"]
                 }
@@ -249,9 +254,7 @@ class OzonAPI:
         
         endpoint = "/v3/product/info/list"
         data = {
-            "offer_id": "",
-            "product_id": product_ids,
-            "sku": 0
+            "product_id": product_ids
         }
         
         result = self._make_request(endpoint, data)

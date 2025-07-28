@@ -50,6 +50,11 @@ def test_ozon_api():
             "data": {
                 "limit": 10,
                 "offset": 0,
+                "filter": {
+                    "visibility_details": {
+                        "active": True
+                    }
+                },
                 "with": {
                     "price": True,
                     "stock": True
@@ -72,14 +77,12 @@ def test_ozon_api():
             "name": "Информация о товарах (v3)",
             "endpoint": "/v3/product/info/list",
             "data": {
-                "offer_id": "",
-                "product_id": [1, 2, 3],
-                "sku": 0
+                "product_id": [1, 2, 3]
             }
         },
         {
-            "name": "Остатки товаров (v1)",
-            "endpoint": "/v1/product/info/stocks",
+            "name": "Остатки товаров (v3)",
+            "endpoint": "/v3/product/info/stocks",
             "data": {
                 "product_id": 1
             }
@@ -88,8 +91,8 @@ def test_ozon_api():
             "name": "Аналитика (v1)",
             "endpoint": "/v1/analytics/data",
             "data": {
-                "date_from": "2024-01-01",
-                "date_to": "2024-01-31",
+                "date_from": "2024-12-01",
+                "date_to": "2024-12-31",
                 "metrics": ["revenue", "orders"],
                 "dimension": ["day"],
                 "filters": [],
