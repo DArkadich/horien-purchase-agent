@@ -216,6 +216,10 @@ class GoogleSheets:
             logger.warning("Нет данных для записи в таблицу")
             return
         
+        # Сортируем данные по SKU
+        report_data_sorted = sorted(report_data, key=lambda x: x.get('sku', ''))
+        logger.info(f"Данные отчета отсортированы по SKU")
+        
         # Подготавливаем заголовки
         headers = [
             'SKU',
@@ -230,7 +234,7 @@ class GoogleSheets:
         
         # Подготавливаем данные
         rows = [headers]
-        for item in report_data:
+        for item in report_data_sorted:
             row = [
                 item['sku'],
                 item['avg_daily_sales'],
@@ -257,7 +261,7 @@ class GoogleSheets:
             # Форматируем заголовок
             self.format_header("Sheet1!A1:H1")
             
-            logger.info(f"Отчет о закупках записан в Google Sheets: {len(report_data)} позиций")
+            logger.info(f"Отчет о закупках записан в Google Sheets: {len(report_data_sorted)} позиций")
             
         except Exception as e:
             logger.error(f"Ошибка записи отчета в Google Sheets: {e}")
@@ -338,9 +342,13 @@ class GoogleSheets:
         # Убеждаемся, что лист Stocks существует
         self._ensure_sheets_exist()
         
+        # Сортируем данные по SKU
+        stock_data_sorted = sorted(stock_data, key=lambda x: x.get('sku', ''))
+        logger.info(f"Данные отсортированы по SKU")
+        
         # Логируем входящие данные для отладки
-        logger.info(f"Получено {len(stock_data)} записей об остатках для записи")
-        for i, item in enumerate(stock_data[:3]):  # Показываем первые 3 записи
+        logger.info(f"Получено {len(stock_data_sorted)} записей об остатках для записи")
+        for i, item in enumerate(stock_data_sorted[:3]):  # Показываем первые 3 записи
             logger.info(f"Пример данных остатка {i+1}: {item}")
         
         # Подготавливаем заголовки
@@ -355,7 +363,7 @@ class GoogleSheets:
         
         # Подготавливаем данные
         rows = [headers]
-        for item in stock_data:
+        for item in stock_data_sorted:
             stock_value = item.get('stock', 0)
             reserved_value = item.get('reserved', 0)
             available = stock_value - reserved_value
@@ -398,7 +406,7 @@ class GoogleSheets:
             # Форматируем заголовок
             self.format_header("Stocks!A1:F1")
             
-            logger.info(f"Данные об остатках записаны в Google Sheets: {len(stock_data)} позиций")
+            logger.info(f"Данные об остатках записаны в Google Sheets: {len(stock_data_sorted)} позиций")
             
         except Exception as e:
             logger.error(f"Ошибка записи данных об остатках в Google Sheets: {e}")
