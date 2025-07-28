@@ -65,7 +65,7 @@ async def main():
             logger.info(f"Пример данных об остатках: {current_stocks[:2]}")  # Показываем первые 2 записи
         
         if current_stocks:
-            stock_tracker.save_daily_stocks(current_stocks)
+            stock_tracker.save_stock_data(current_stocks)
             logger.info(f"Сохранено {len(current_stocks)} записей об остатках")
             
             # Очистка синтетических данных и запись реальных остатков
