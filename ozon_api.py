@@ -33,6 +33,7 @@ class OzonAPI:
             logger.debug(f"API Request: {url}")
             logger.debug(f"Request data: {data}")
             logger.debug(f"Response status: {response.status_code}")
+            logger.debug(f"Response headers: {dict(response.headers)}")
             
             if response.status_code == 200:
                 result = response.json()
@@ -43,12 +44,15 @@ class OzonAPI:
                     return None
             elif response.status_code == 404:
                 logger.warning(f"Эндпоинт {endpoint} не найден (404). Возможно, используется неправильная версия API.")
+                logger.debug(f"Response body: {response.text}")
                 return None
             elif response.status_code == 401:
                 logger.error(f"Ошибка аутентификации (401). Проверьте API ключи.")
+                logger.debug(f"Response body: {response.text}")
                 return None
             elif response.status_code == 403:
                 logger.error(f"Ошибка доступа (403). Проверьте права доступа к API.")
+                logger.debug(f"Response body: {response.text}")
                 return None
             else:
                 logger.error(f"API вернул статус {response.status_code}: {response.text}")
@@ -65,7 +69,7 @@ class OzonAPI:
         logger.info("Получение списка товаров...")
         
         # Используем правильный эндпоинт для получения товаров
-        endpoint = "/v2/product/list"
+        endpoint = "/v3/product/list"
         data = {
             "limit": 1000,
             "offset": 0,
@@ -195,7 +199,7 @@ class OzonAPI:
         stocks_data = []
         for product in products:
             if "id" in product:
-                endpoint = "/v3/product/info/stocks"
+                endpoint = "/v1/product/info/stocks"
                 data = {
                     "product_id": product["id"]
                 }
@@ -243,7 +247,7 @@ class OzonAPI:
         """
         logger.info(f"Получение информации о {len(product_ids)} товарах...")
         
-        endpoint = "/v2/product/info/list"
+        endpoint = "/v3/product/info/list"
         data = {
             "offer_id": "",
             "product_id": product_ids,
