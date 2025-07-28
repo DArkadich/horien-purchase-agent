@@ -159,20 +159,27 @@ class OzonAPI:
         
         # Пытаемся получить остатки через отчет о товарах (основной метод)
         logger.info("Попытка получения остатков через отчет о товарах...")
-        report_id = self.create_products_report()
-        
-        if report_id:
-            # Ждем готовности отчета (максимум 30 секунд)
-            import time
-            for i in range(30):
-                time.sleep(1)
-                stocks_data = self.get_report_file(report_id)
-                if stocks_data:
-                    logger.info(f"Получено {len(stocks_data)} записей об остатках из отчета")
-                    return stocks_data
-                logger.info(f"Отчет еще не готов, попытка {i+1}/30")
+        try:
+            report_id = self.create_products_report()
+            logger.info(f"Результат создания отчета: {report_id}")
             
-            logger.warning("Отчет не готов за 30 секунд")
+            if report_id:
+                # Ждем готовности отчета (максимум 30 секунд)
+                import time
+                for i in range(30):
+                    time.sleep(1)
+                    logger.info(f"Проверка готовности отчета, попытка {i+1}/30")
+                    stocks_data = self.get_report_file(report_id)
+                    if stocks_data:
+                        logger.info(f"Получено {len(stocks_data)} записей об остатках из отчета")
+                        return stocks_data
+                    logger.info(f"Отчет еще не готов, попытка {i+1}/30")
+                
+                logger.warning("Отчет не готов за 30 секунд")
+            else:
+                logger.warning("Не удалось создать отчет о товарах")
+        except Exception as e:
+            logger.error(f"Ошибка при работе с отчетом о товарах: {e}")
         
         # Если отчет не сработал, пробуем старые методы
         logger.info("Попытка получения остатков через product info...")
@@ -402,13 +409,19 @@ class OzonAPI:
             "language": "DEFAULT"
         }
         
+        logger.info(f"Отправка запроса на {endpoint} с данными: {data}")
         result = self._make_request(endpoint, data)
+        logger.info(f"Ответ API: {result}")
         
         if result and "result" in result:
             report_id = result["result"].get("report_id")
             if report_id:
                 logger.info(f"Отчет о товарах создан, ID: {report_id}")
                 return report_id
+            else:
+                logger.error(f"Нет report_id в ответе: {result}")
+        else:
+            logger.error(f"Неверный формат ответа: {result}")
         
         logger.error("Не удалось создать отчет о товарах")
         return None
