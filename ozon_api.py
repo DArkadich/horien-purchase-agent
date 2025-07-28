@@ -193,11 +193,17 @@ class OzonAPI:
                 sku = product.get('offer_id', '')
                 name = product.get('name', '')
                 
+                # Отладочная информация для каждого товара
+                logger.info(f"Обработка товара: SKU={sku}, Name={name}")
+                
                 if 'stocks' in product:
                     stocks = product['stocks']
+                    logger.info(f"Stocks структура: has_stock={stocks.get('has_stock')}, stocks_array={len(stocks.get('stocks', []))}")
+                    
                     if 'stocks' in stocks and isinstance(stocks['stocks'], list) and stocks['stocks']:
                         # Новый формат с массивом stocks
                         for stock_item in stocks['stocks']:
+                            logger.info(f"Найден stock_item: {stock_item}")
                             stocks_data.append({
                                 "sku": sku,
                                 "name": name,
@@ -206,6 +212,7 @@ class OzonAPI:
                             })
                     elif 'has_stock' in stocks and stocks['has_stock']:
                         # Есть остатки, но нет детальной информации
+                        logger.info(f"Товар {sku} имеет остатки (has_stock=True)")
                         stocks_data.append({
                             "sku": sku,
                             "name": name,
@@ -214,12 +221,15 @@ class OzonAPI:
                         })
                     else:
                         # Старый формат или нет остатков
+                        logger.info(f"Товар {sku} не имеет остатков или использует старый формат")
                         stocks_data.append({
                             "sku": sku,
                             "name": name,
                             "stock": stocks.get('stock', 0),
                             "reserved": stocks.get('reserved', 0)
                         })
+                else:
+                    logger.info(f"Товар {sku} не имеет поля stocks")
             
             if stocks_data:
                 logger.info(f"Получено {len(stocks_data)} записей об остатках из product_info")
