@@ -11,7 +11,7 @@ from typing import Dict, List, Any
 import os
 
 # Импорты модулей
-from config import Config
+from config import validate_config, logger
 from ozon_api import OzonAPI
 from sheets import GoogleSheets
 from telegram_notify import TelegramNotifier
@@ -28,8 +28,9 @@ def main():
     
     try:
         # Инициализация конфигурации
-        config = Config()
-        logger.info("Конфигурация загружена успешно")
+        if not validate_config():
+            logger.error("Ошибка конфигурации. Завершение работы.")
+            return
         
         # Инициализация компонентов
         logger.info("Инициализация компонентов...")
