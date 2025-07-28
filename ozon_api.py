@@ -203,13 +203,17 @@ class OzonAPI:
                     
                     if 'stocks' in stocks and isinstance(stocks['stocks'], list) and stocks['stocks']:
                         # Новый формат с массивом stocks
-                        for stock_item in stocks['stocks']:
-                            logger.info(f"Найден stock_item: {stock_item}")
+                        logger.info(f"Найдено {len(stocks['stocks'])} элементов в stocks array")
+                        for i, stock_item in enumerate(stocks['stocks']):
+                            logger.info(f"Stock item {i+1}: {stock_item}")
+                            present = stock_item.get('present', 0)
+                            reserved = stock_item.get('reserved', 0)
+                            logger.info(f"Товар {sku}: present={present}, reserved={reserved}")
                             stocks_data.append({
                                 "sku": sku,
                                 "name": name,
-                                "stock": stock_item.get('present', 0),
-                                "reserved": stock_item.get('reserved', 0)
+                                "stock": present,
+                                "reserved": reserved
                             })
                     elif 'has_stock' in stocks and stocks['has_stock']:
                         # Есть остатки, но нет детальной информации
