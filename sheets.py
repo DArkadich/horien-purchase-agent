@@ -184,12 +184,13 @@ class GoogleSheets:
             ]
             rows.append(row)
         
-        # Используем первый лист (Sheet1) для избежания проблем с названиями
+        # Используем первый лист с конкретным диапазоном
         range_name = 'Sheet1!A1:H' + str(len(rows))
         
         try:
-            # Очищаем существующие данные
-            self.clear_sheet_range('Sheet1!A:H')
+            # Очищаем существующие данные (конкретный диапазон)
+            clear_range = f'Sheet1!A1:H{len(rows) + 10}'  # Очищаем с запасом
+            self.clear_sheet_range(clear_range)
             
             # Записываем новые данные
             self.update_sheet_data(range_name, rows)
