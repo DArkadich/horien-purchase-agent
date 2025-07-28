@@ -157,6 +157,26 @@ class OzonAPI:
         """
         logger.info("Получение данных об остатках...")
         
+        # Пытаемся получить остатки через отчет о товарах (основной метод)
+        logger.info("Попытка получения остатков через отчет о товарах...")
+        report_id = self.create_products_report()
+        
+        if report_id:
+            # Ждем готовности отчета (максимум 30 секунд)
+            import time
+            for i in range(30):
+                time.sleep(1)
+                stocks_data = self.get_report_file(report_id)
+                if stocks_data:
+                    logger.info(f"Получено {len(stocks_data)} записей об остатках из отчета")
+                    return stocks_data
+                logger.info(f"Отчет еще не готов, попытка {i+1}/30")
+            
+            logger.warning("Отчет не готов за 30 секунд")
+        
+        # Если отчет не сработал, пробуем старые методы
+        logger.info("Попытка получения остатков через product info...")
+        
         # Получаем реальные товары
         products = self.get_products()
         if not products:
@@ -369,3 +389,102 @@ class OzonAPI:
         
         logger.info(f"Получено {len(analytics_data)} записей аналитических данных")
         return analytics_data 
+
+    def create_products_report(self) -> Optional[str]:
+        """
+        Создает отчет о товарах через /v1/report/products/create
+        Возвращает ID отчета для последующего получения
+        """
+        logger.info("Создание отчета о товарах...")
+        
+        endpoint = "/v1/report/products/create"
+        data = {
+            "language": "DEFAULT"
+        }
+        
+        result = self._make_request(endpoint, data)
+        
+        if result and "result" in result:
+            report_id = result["result"].get("report_id")
+            if report_id:
+                logger.info(f"Отчет о товарах создан, ID: {report_id}")
+                return report_id
+        
+        logger.error("Не удалось создать отчет о товарах")
+        return None
+    
+    def get_report_status(self, report_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Проверяет статус отчета
+        """
+        logger.info(f"Проверка статуса отчета {report_id}...")
+        
+        endpoint = "/v1/report/info"
+        data = {
+            "report_id": report_id
+        }
+        
+        result = self._make_request(endpoint, data)
+        
+        if result and "result" in result:
+            return result["result"]
+        
+        return None
+    
+    def get_report_file(self, report_id: str) -> Optional[List[Dict[str, Any]]]:
+        """
+        Получает файл отчета и парсит данные о товарах
+        """
+        logger.info(f"Получение файла отчета {report_id}...")
+        
+        # Сначала проверяем статус отчета
+        status = self.get_report_status(report_id)
+        if not status:
+            logger.error("Не удалось получить статус отчета")
+            return None
+        
+        # Проверяем, готов ли отчет
+        if status.get("status") != "success":
+            logger.info(f"Отчет еще не готов, статус: {status.get('status')}")
+            return None
+        
+        # Получаем файл отчета
+        file_url = status.get("file")
+        if not file_url:
+            logger.error("Нет ссылки на файл отчета")
+            return None
+        
+        try:
+            import requests
+            response = requests.get(file_url)
+            response.raise_for_status()
+            
+            # Парсим CSV файл
+            import csv
+            import io
+            
+            products_data = []
+            csv_reader = csv.DictReader(io.StringIO(response.text))
+            
+            for row in csv_reader:
+                # Парсим данные из CSV
+                product_data = {
+                    "sku": row.get("FBS Ozon SKU ID", ""),
+                    "stock": int(row.get("Доступно на складе Ozon, шт", 0)),
+                    "reserved": int(row.get("Зарезервировано, шт", 0)),
+                    "price": float(row.get("Текущая цена с учётом скидки, руб.", 0)),
+                    "status": row.get("Статус товара", ""),
+                    "barcode": row.get("Barcode", ""),
+                    "product_id": row.get("Ozon Product ID", "")
+                }
+                
+                # Добавляем только товары с остатками
+                if product_data["stock"] > 0 or product_data["reserved"] > 0:
+                    products_data.append(product_data)
+            
+            logger.info(f"Получено {len(products_data)} товаров с остатками из отчета")
+            return products_data
+            
+        except Exception as e:
+            logger.error(f"Ошибка при получении файла отчета: {e}")
+            return None 
