@@ -180,7 +180,13 @@ class OzonAPI:
                 return []
             
             # Получаем информацию о товарах с остатками
+            logger.info(f"Вызываем get_product_info с {len(product_ids)} offer_id")
             product_info = self.get_product_info(product_ids)
+            logger.info(f"Получено {len(product_info)} товаров из product_info")
+            
+            if not product_info:
+                logger.warning("Не удалось получить информацию о товарах")
+                return []
             
             stocks_data = []
             for product in product_info:
@@ -232,6 +238,7 @@ class OzonAPI:
                         "reserved": 0
                     })
             
+            logger.info(f"Итоговое количество записей об остатках: {len(stocks_data)}")
             if stocks_data:
                 logger.info(f"Получено {len(stocks_data)} записей об остатках из product_info")
                 # Логируем несколько примеров
