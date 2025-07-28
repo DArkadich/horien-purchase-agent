@@ -150,6 +150,11 @@ class OzonAPI:
                 "page_size": 1000,
                 "page": 1
             }),
+            # Финансовые данные о выкупе товаров
+            ("/v1/finance/products/buyout", {
+                "date_from": start_date.strftime("%Y-%m-%d"),
+                "date_to": end_date.strftime("%Y-%m-%d")
+            }),
             # Также пробуем заказы как fallback
             ("/v1/order/list", {
                 "limit": 1000,
@@ -220,6 +225,18 @@ class OzonAPI:
                             "quantity": data_point.get("quantity", 0),
                             "revenue": data_point.get("revenue", 0)
                         })
+                
+                # Формат финансовых данных о выкупе
+                elif "items" in result and result["items"]:
+                    for item in result["items"]:
+                        # Обрабатываем данные о выкупе как продажи
+                        if "product_id" in item or "offer_id" in item:
+                            sales_data.append({
+                                "sku": item.get("offer_id", item.get("product_id", "")),
+                                "date": item.get("date", ""),
+                                "quantity": item.get("quantity", item.get("amount", 0)),
+                                "revenue": item.get("revenue", item.get("price", 0))
+                            })
             
             if sales_data:
                 logger.info(f"Получено {len(sales_data)} записей о продажах из {endpoint}")

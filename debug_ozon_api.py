@@ -240,6 +240,14 @@ def debug_ozon_api():
                 "page_size": 100,
                 "page": 1
             }
+        },
+        {
+            "name": "Выкуп товаров (финансы)",
+            "endpoint": "/v1/finance/products/buyout",
+            "data": {
+                "date_from": "2024-01-01",
+                "date_to": "2024-12-31"
+            }
         }
     ]
     
