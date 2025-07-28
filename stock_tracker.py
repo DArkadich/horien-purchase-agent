@@ -20,7 +20,12 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 class StockTracker:
-    def __init__(self, db_path: str = "stock_history.db"):
+    def __init__(self, db_path: str = None):
+        if db_path is None:
+            # Создаем папку data если её нет
+            os.makedirs("data", exist_ok=True)
+            db_path = "data/stock_history.db"
+        
         self.db_path = db_path
         self.init_database()
     

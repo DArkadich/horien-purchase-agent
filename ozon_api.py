@@ -164,9 +164,70 @@ class OzonAPI:
             logger.error("Не удалось получить список товаров")
             return []
         
-        # Пока нет реальных данных об остатках, возвращаем пустой список
-        logger.warning("Нет реальных данных об остатках из API")
-        return []
+        # Пытаемся получить остатки через API
+        try:
+            # Получаем ID товаров
+            product_ids = [product['product_id'] for product in products if 'product_id' in product]
+            
+            if not product_ids:
+                logger.warning("Нет ID товаров для получения остатков")
+                return []
+            
+            # Получаем информацию о товарах с остатками
+            product_info = self.get_product_info(product_ids)
+            
+            stocks_data = []
+            for product in product_info:
+                if 'stock_info' in product:
+                    stock_info = product['stock_info']
+                    stocks_data.append({
+                        "sku": product.get('sku', ''),
+                        "stock": stock_info.get('stock', 0),
+                        "reserved": stock_info.get('reserved', 0)
+                    })
+                elif 'stocks' in product:
+                    # Альтернативный формат
+                    stocks = product['stocks']
+                    stocks_data.append({
+                        "sku": product.get('sku', ''),
+                        "stock": stocks.get('stock', 0),
+                        "reserved": stocks.get('reserved', 0)
+                    })
+            
+            if stocks_data:
+                logger.info(f"Получено {len(stocks_data)} записей об остатках")
+                return stocks_data
+            
+            # Если не удалось получить через product_info, пробуем отчеты
+            logger.info("Попытка получения остатков через отчеты...")
+            endpoint = "/v1/report/list"
+            data = {
+                "report_type": "SELLER_STOCK",
+                "page_size": 100,
+                "page": 1
+            }
+            
+            result = self._make_request(endpoint, data)
+            
+            if result and "items" in result:
+                stocks_data = []
+                for item in result["items"]:
+                    stocks_data.append({
+                        "sku": item.get('sku', ''),
+                        "stock": item.get('stock', 0),
+                        "reserved": item.get('reserved', 0)
+                    })
+                
+                if stocks_data:
+                    logger.info(f"Получено {len(stocks_data)} записей об остатках через отчеты")
+                    return stocks_data
+            
+            logger.warning("Не удалось получить данные об остатках из API")
+            return []
+            
+        except Exception as e:
+            logger.error(f"Ошибка при получении остатков: {e}")
+            return []
     
     def _generate_test_stocks_data(self) -> List[Dict[str, Any]]:
         """
