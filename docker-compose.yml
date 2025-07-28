@@ -7,4 +7,6 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data
-    restart: "no" 
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Moscow 
