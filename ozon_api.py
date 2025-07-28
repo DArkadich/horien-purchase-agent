@@ -37,10 +37,15 @@ class OzonAPI:
             
             if response.status_code == 200:
                 result = response.json()
+                # Проверяем, есть ли поле "result" или данные возвращаются напрямую
                 if result.get("result"):
                     return result["result"]
+                elif "items" in result or "data" in result:
+                    # Данные возвращаются напрямую
+                    logger.info(f"API вернул данные напрямую: {list(result.keys())}")
+                    return result
                 else:
-                    logger.error(f"API вернул ошибку: {result}")
+                    logger.error(f"API вернул неожиданный формат: {result}")
                     return None
             elif response.status_code == 404:
                 logger.warning(f"Эндпоинт {endpoint} не найден (404). Возможно, используется неправильная версия API.")
@@ -83,7 +88,7 @@ class OzonAPI:
                 "stock": True
             }
         }
-        
+            
         result = self._make_request(endpoint, data)
         if result and "items" in result:
             logger.info(f"Успешно получены товары: {len(result['items'])} шт")
@@ -117,7 +122,7 @@ class OzonAPI:
         Получает данные о продажах за указанное количество дней
         """
         logger.info(f"Получение данных о продажах за {days} дней...")
-
+        
         products = self.get_products()
         if not products:
             logger.warning("Нет товаров для оценки продаж")
@@ -307,7 +312,7 @@ class OzonAPI:
             return result["items"]
         else:
             logger.warning(f"Не удалось получить информацию о товарах. Результат: {result}")
-            return []
+        return []
     
     def get_analytics_data(self, days: int = 90) -> List[Dict[str, Any]]:
         """
