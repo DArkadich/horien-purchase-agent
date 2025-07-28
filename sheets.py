@@ -324,3 +324,90 @@ class GoogleSheets:
         self.update_sheet_data(range_name, summary_rows)
         
         logger.info("Сводный лист создан") 
+    
+    def write_stock_data(self, stock_data: List[Dict[str, Any]]):
+        """
+        Записывает реальные данные об остатках в Google Sheets
+        """
+        logger.info("Запись данных об остатках в Google Sheets...")
+        
+        if not stock_data:
+            logger.warning("Нет данных об остатках для записи в таблицу")
+            return
+        
+        # Подготавливаем заголовки
+        headers = [
+            'SKU',
+            'Остаток',
+            'Зарезервировано',
+            'Доступно',
+            'Дата обновления'
+        ]
+        
+        # Подготавливаем данные
+        rows = [headers]
+        for item in stock_data:
+            available = item.get('stock', 0) - item.get('reserved', 0)
+            row = [
+                item.get('sku', ''),
+                item.get('stock', 0),
+                item.get('reserved', 0),
+                available,
+                datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            ]
+            rows.append(row)
+        
+        # Записываем в лист "Остатки"
+        range_name = f"Остатки!A1:E{len(rows)}"
+        
+        try:
+            # Очищаем существующие данные
+            clear_range = f"Остатки!A1:E{len(rows) + 10}"
+            self.clear_sheet_range(clear_range)
+            
+            # Записываем новые данные
+            self.update_sheet_data(range_name, rows)
+            
+            # Форматируем заголовок
+            self.format_header("Остатки!A1:E1")
+            
+            logger.info(f"Данные об остатках записаны в Google Sheets: {len(stock_data)} позиций")
+            
+        except Exception as e:
+            logger.error(f"Ошибка записи данных об остатках в Google Sheets: {e}")
+            pass
+    
+    def clear_all_synthetic_data(self):
+        """
+        Очищает все синтетические данные из таблицы
+        """
+        logger.info("Очистка синтетических данных из Google Sheets...")
+        
+        try:
+            # Очищаем основные листы
+            sheets_to_clear = ['Sheet1', 'Summary', 'Остатки']
+            
+            for sheet_name in sheets_to_clear:
+                try:
+                    # Очищаем весь лист
+                    range_name = f"{sheet_name}!A:Z"
+                    self.clear_sheet_range(range_name)
+                    logger.info(f"Очищен лист: {sheet_name}")
+                except Exception as e:
+                    logger.warning(f"Не удалось очистить лист {sheet_name}: {e}")
+            
+            # Записываем заголовок о том, что данные очищены
+            header_data = [
+                ['Данные очищены'],
+                [''],
+                ['Дата очистки', datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
+                ['Примечание', 'Синтетические данные удалены. Ожидание реальных данных.']
+            ]
+            
+            self.update_sheet_data("Sheet1!A1:D4", header_data)
+            
+            logger.info("Синтетические данные очищены из Google Sheets")
+            
+        except Exception as e:
+            logger.error(f"Ошибка очистки синтетических данных: {e}")
+            pass 
