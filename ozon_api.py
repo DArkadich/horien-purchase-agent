@@ -244,6 +244,38 @@ class OzonAPI:
                     logger.info(f"Получено {len(stocks_data)} записей об остатках через отчеты")
                     return stocks_data
             
+            # Попробуем получить остатки через analytics
+            logger.info("Попытка получения остатков через analytics...")
+            endpoint = "/v1/analytics/data"
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=1)
+            
+            data = {
+                "date_from": start_date.strftime("%Y-%m-%d"),
+                "date_to": end_date.strftime("%Y-%m-%d"),
+                "metrics": ["stock"],
+                "dimension": ["sku"],
+                "filters": [],
+                "sort": [{"key": "sku", "order": "ASC"}],
+                "limit": 1000,
+                "offset": 0
+            }
+            
+            result = self._make_request(endpoint, data)
+            
+            if result and "data" in result:
+                stocks_data = []
+                for item in result["data"]:
+                    stocks_data.append({
+                        "sku": item.get('sku', ''),
+                        "stock": item.get('stock', 0),
+                        "reserved": 0  # Analytics не возвращает reserved
+                    })
+                
+                if stocks_data:
+                    logger.info(f"Получено {len(stocks_data)} записей об остатках через analytics")
+                    return stocks_data
+            
             logger.warning("Не удалось получить данные об остатках из API")
             return []
             
