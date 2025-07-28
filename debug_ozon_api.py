@@ -166,6 +166,39 @@ def debug_ozon_api():
                 "page_size": 100,
                 "page": 1
             }
+        },
+        {
+            "name": "Отчёт о товарах компании",
+            "endpoint": "/v1/report/create",
+            "data": {
+                "report_type": "COMPANY_POSTINGS",
+                "date_from": "2024-01-01",
+                "date_to": "2024-12-31"
+            }
+        },
+        {
+            "name": "Заказы (v3) - альтернативный",
+            "endpoint": "/v3/order/list",
+            "data": {
+                "limit": 10,
+                "offset": 0
+            }
+        },
+        {
+            "name": "Заказы (v4)",
+            "endpoint": "/v4/order/list",
+            "data": {
+                "limit": 10,
+                "offset": 0
+            }
+        },
+        {
+            "name": "Заказы (v5)",
+            "endpoint": "/v5/order/list",
+            "data": {
+                "limit": 10,
+                "offset": 0
+            }
         }
     ]
     

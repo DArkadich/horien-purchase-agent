@@ -118,45 +118,66 @@ class OzonAPI:
         """
         logger.info(f"Получение данных о продажах за {days} дней...")
         
-        # Получаем реальные товары для генерации данных
-        products = self.get_products()
-        if not products:
-            logger.warning("Нет товаров, используем тестовые данные")
-            return self._generate_test_sales_data(days)
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
         
-        # Используем реальные SKU для генерации данных
-        real_skus = [product.get("offer_id", "") for product in products if product.get("offer_id")]
+        # Пробуем различные эндпоинты для получения заказов
+        endpoints_to_try = [
+            ("/v1/order/list", {
+                "limit": 1000,
+                "offset": 0,
+                "since": start_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "to": end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+            }),
+            ("/v2/order/list", {
+                "limit": 1000,
+                "offset": 0,
+                "since": start_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "to": end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+            }),
+            ("/v3/order/list", {
+                "limit": 1000,
+                "offset": 0,
+                "since": start_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "to": end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+            }),
+            ("/v4/order/list", {
+                "limit": 1000,
+                "offset": 0,
+                "since": start_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "to": end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+            }),
+            ("/v5/order/list", {
+                "limit": 1000,
+                "offset": 0,
+                "since": start_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "to": end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+            })
+        ]
         
-        if not real_skus:
-            logger.warning("Нет SKU в товарах, используем тестовые данные")
-            return self._generate_test_sales_data(days)
-        
-        # Генерируем реалистичные данные на основе реальных товаров
-        sales_data = []
-        import random
-        
-        # Генерируем продажи только для части товаров и не каждый день
-        for i in range(days):
-            date = datetime.now() - timedelta(days=i)
+        for endpoint, data in endpoints_to_try:
+            logger.info(f"Пробуем эндпоинт: {endpoint}")
+            result = self._make_request(endpoint, data)
             
-            # Выбираем случайные товары для продаж (не все сразу)
-            active_skus = random.sample(real_skus, min(5, len(real_skus)))  # Максимум 5 товаров в день
-            
-            for sku in active_skus:
-                # Генерируем продажи только с некоторой вероятностью
-                if random.random() < 0.2:  # 20% вероятность продажи
-                    quantity = random.randint(1, 3)  # Реалистичные объемы
-                    revenue = quantity * random.randint(500, 2000)  # Реалистичные цены
-                    
-                    sales_data.append({
-                        "sku": sku,
-                        "date": date.strftime("%Y-%m-%d"),
-                        "quantity": quantity,
-                        "revenue": revenue
-                    })
+            if result and "orders" in result and result["orders"]:
+                sales_data = []
+                for order in result["orders"]:
+                    if "items" in order:
+                        for item in order["items"]:
+                            sales_data.append({
+                                "sku": item.get("offer_id", ""),
+                                "date": order.get("created_at", "").split("T")[0],
+                                "quantity": item.get("quantity", 0),
+                                "revenue": item.get("price", {}).get("price", 0)
+                            })
+                
+                if sales_data:
+                    logger.info(f"Получено {len(sales_data)} записей о продажах из {endpoint}")
+                    return sales_data
         
-        logger.info(f"Сгенерировано {len(sales_data)} записей о продажах на основе {len(real_skus)} реальных товаров")
-        return sales_data
+        # Если ни один эндпоинт не работает, возвращаем пустой список
+        logger.warning("Не удалось получить данные о продажах ни из одного эндпоинта")
+        return []
     
     def _generate_test_sales_data(self, days: int) -> List[Dict[str, Any]]:
         """
@@ -216,28 +237,9 @@ class OzonAPI:
                 logger.info(f"Получено {len(stocks_data)} записей об остатках из API")
                 return stocks_data
         
-        # Если нет данных из API, генерируем на основе реальных товаров
-        logger.warning("Нет данных об остатках из API, генерируем на основе реальных товаров")
-        stocks_data = []
-        import random
-        
-        for product in products:
-            sku = product.get("offer_id", "")
-            if not sku:
-                continue
-                
-            # Генерируем реалистичные остатки
-            stock = random.randint(0, 50)  # 0-50 штук на складе
-            reserved = random.randint(0, min(10, stock))  # Зарезервировано не больше чем на складе
-            
-            stocks_data.append({
-                "sku": sku,
-                "stock": stock,
-                "reserved": reserved
-            })
-        
-        logger.info(f"Сгенерировано {len(stocks_data)} записей об остатках на основе {len(products)} реальных товаров")
-        return stocks_data
+        # Если нет данных из API, возвращаем пустой список
+        logger.warning("Нет данных об остатках из API")
+        return []
     
     def _generate_test_stocks_data(self) -> List[Dict[str, Any]]:
         """
