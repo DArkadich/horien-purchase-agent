@@ -37,7 +37,7 @@ class TelegramNotifier:
             await self.bot.send_message(
                 chat_id=self.chat_id,
                 text=message,
-                parse_mode='Markdown'
+                parse_mode='HTML'  # Используем HTML вместо Markdown
             )
             logger.info("Сообщение отправлено в Telegram")
             return True
@@ -56,22 +56,22 @@ class TelegramNotifier:
         logger.info("Отправка отчета о закупках в Telegram...")
         
         if not report_data:
-            message = "📊 *Отчет о закупках*\n\nНет товаров, требующих закупки."
+            message = "📊 <b>Отчет о закупках</b>\n\nНет товаров, требующих закупки."
             await self.send_message(message)
             return
         
         # Формируем основное сообщение
-        message = "🛒 *Отчет о закупках*\n\n"
+        message = "🛒 <b>Отчет о закупках</b>\n\n"
         
         # Добавляем сводку
-        message += f"📈 *Сводка:*\n"
+        message += f"📈 <b>Сводка:</b>\n"
         message += f"• Всего позиций: {summary_data.get('total_items', 0)}\n"
         message += f"• Высокий приоритет: {summary_data.get('high_priority', 0)}\n"
         message += f"• Средний приоритет: {summary_data.get('medium_priority', 0)}\n"
         message += f"• Низкий приоритет: {summary_data.get('low_priority', 0)}\n\n"
         
         # Добавляем детализацию (первые 10 позиций)
-        message += "📋 *Детализация:*\n"
+        message += "📋 <b>Детализация:</b>\n"
         for i, item in enumerate(report_data[:10], 1):
             sku = item['sku']
             days_left = item['days_until_stockout']
@@ -88,7 +88,7 @@ class TelegramNotifier:
             message += f"... и еще {len(report_data) - 10} позиций\n\n"
         
         # Добавляем рекомендации
-        message += "💡 *Рекомендации:*\n"
+        message += "💡 <b>Рекомендации:</b>\n"
         high_priority = summary_data.get('high_priority', 0)
         if high_priority > 0:
             message += f"• 🔴 {high_priority} позиций требуют срочной закупки (< 10 дней)\n"
@@ -111,7 +111,7 @@ class TelegramNotifier:
         """
         Отправляет уведомление об ошибке
         """
-        message = f"❌ *Ошибка в работе агента закупок*\n\n{error_message}"
+        message = f"❌ <b>Ошибка в работе агента закупок</b>\n\n{error_message}"
         await self.send_message(message)
     
     async def send_startup_notification(self):
@@ -119,14 +119,14 @@ class TelegramNotifier:
         Отправляет уведомление о запуске агента
         """
         from datetime import datetime
-        message = f"🚀 *Агент закупок запущен*\n\nВремя запуска: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        message = f"🚀 <b>Агент закупок запущен</b>\n\nВремя запуска: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         await self.send_message(message)
     
     async def send_completion_notification(self, execution_time: float, items_processed: int):
         """
         Отправляет уведомление о завершении работы
         """
-        message = f"✅ *Агент закупок завершил работу*\n\n"
+        message = f"✅ <b>Агент закупок завершил работу</b>\n\n"
         message += f"⏱ Время выполнения: {execution_time:.2f} сек\n"
         message += f"📦 Обработано SKU: {items_processed}\n"
         message += f"🕐 Время завершения: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
@@ -164,4 +164,26 @@ class TelegramNotifier:
             loop.run_until_complete(self.send_error_notification(error_message))
         except RuntimeError:
             # Если нет активного event loop, создаем новый
-            asyncio.run(self.send_error_notification(error_message)) 
+            asyncio.run(self.send_error_notification(error_message))
+    
+    def send_startup_notification_sync(self):
+        """
+        Синхронная версия отправки уведомления о запуске
+        """
+        try:
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(self.send_startup_notification())
+        except RuntimeError:
+            # Если нет активного event loop, создаем новый
+            asyncio.run(self.send_startup_notification())
+    
+    def send_completion_notification_sync(self, execution_time: float, items_processed: int):
+        """
+        Синхронная версия отправки уведомления о завершении
+        """
+        try:
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(self.send_completion_notification(execution_time, items_processed))
+        except RuntimeError:
+            # Если нет активного event loop, создаем новый
+            asyncio.run(self.send_completion_notification(execution_time, items_processed)) 
