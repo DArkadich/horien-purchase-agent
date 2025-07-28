@@ -16,45 +16,6 @@ from forecast import PurchaseForecast
 from sheets import GoogleSheets
 from telegram_notify import TelegramNotifier
 
-def create_logs_directory():
-    """
-    Создает директорию для логов, если она не существует
-    """
-    if not os.path.exists('logs'):
-        os.makedirs('logs')
-        logger.info("Создана директория logs")
-
-def generate_summary_data(report_data: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """
-    Генерирует сводные данные для отчета
-    """
-    if not report_data:
-        return {
-            'total_items': 0,
-            'high_priority': 0,
-            'medium_priority': 0,
-            'low_priority': 0,
-            'total_value': 0,
-            'items': []
-        }
-    
-    # Подсчитываем приоритеты
-    high_priority = sum(1 for item in report_data if item['urgency'] == 'HIGH')
-    medium_priority = sum(1 for item in report_data if item['urgency'] == 'MEDIUM')
-    low_priority = sum(1 for item in report_data if item['urgency'] == 'LOW')
-    
-    # Рассчитываем общую стоимость (примерно)
-    total_value = sum(item['recommended_quantity'] for item in report_data)
-    
-    return {
-        'total_items': len(report_data),
-        'high_priority': high_priority,
-        'medium_priority': medium_priority,
-        'low_priority': low_priority,
-        'total_value': total_value,
-        'items': report_data
-    }
-
 def main():
     """
     Главная функция приложения
@@ -62,9 +23,6 @@ def main():
     start_time = time.time()
     
     try:
-        # Создаем директорию для логов
-        create_logs_directory()
-        
         logger.info("=" * 50)
         logger.info("Запуск агента закупок Horiens")
         logger.info("=" * 50)
@@ -184,6 +142,37 @@ def main():
             logger.error("Не удалось отправить уведомление об ошибке")
         
         return 1
+
+def generate_summary_data(report_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Генерирует сводные данные для отчета
+    """
+    if not report_data:
+        return {
+            'total_items': 0,
+            'high_priority': 0,
+            'medium_priority': 0,
+            'low_priority': 0,
+            'total_value': 0,
+            'items': []
+        }
+    
+    # Подсчитываем приоритеты
+    high_priority = sum(1 for item in report_data if item['urgency'] == 'HIGH')
+    medium_priority = sum(1 for item in report_data if item['urgency'] == 'MEDIUM')
+    low_priority = sum(1 for item in report_data if item['urgency'] == 'LOW')
+    
+    # Рассчитываем общую стоимость (примерно)
+    total_value = sum(item['recommended_quantity'] for item in report_data)
+    
+    return {
+        'total_items': len(report_data),
+        'high_priority': high_priority,
+        'medium_priority': medium_priority,
+        'low_priority': low_priority,
+        'total_value': total_value,
+        'items': report_data
+    }
 
 if __name__ == "__main__":
     exit_code = main()
