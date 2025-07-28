@@ -107,6 +107,17 @@ def test_ozon_api():
                 "limit": 10,
                 "offset": 0
             }
+        },
+        {
+            "name": "Заказы (v3)",
+            "endpoint": "/v3/order/list",
+            "data": {
+                "limit": 10,
+                "offset": 0,
+                "since": "2024-10-01T00:00:00Z",
+                "to": "2024-10-31T23:59:59Z",
+                "status": "delivered"
+            }
         }
     ]
     

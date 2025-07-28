@@ -121,26 +121,15 @@ class OzonAPI:
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
         
-        # Используем правильный эндпоинт для аналитики продаж
-        endpoint = "/v1/analytics/data"
+        # Попробуем эндпоинт для получения заказов
+        endpoint = "/v3/order/list"
         data = {
-            "date_from": start_date.strftime("%Y-%m-%d"),
-            "date_to": end_date.strftime("%Y-%m-%d"),
-            "metrics": ["revenue", "orders"],
-            "dimension": ["day", "sku"],
-            "filters": [],
-            "sort": [{"key": "day", "order": "ASC"}],
             "limit": 1000,
-            "offset": 0
+            "offset": 0,
+            "since": start_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "to": end_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "status": "delivered"
         }
-        
-        # Проверяем, что даты в правильном порядке
-        if start_date >= end_date:
-            logger.warning("Неправильный порядок дат, используем тестовые данные")
-            return self._generate_test_sales_data(days)
-        
-        # Логируем даты для отладки
-        logger.debug(f"Запрос аналитики: с {data['date_from']} по {data['date_to']}")
         
         sales_data = []
         offset = 0
@@ -149,20 +138,21 @@ class OzonAPI:
             data["offset"] = offset
             result = self._make_request(endpoint, data)
             
-            if not result or "data" not in result:
+            if not result or "orders" not in result:
                 break
                 
-            # Преобразуем данные аналитики в формат продаж
-            for item in result["data"]:
-                if "sku" in item and "orders" in item:
-                    sales_data.append({
-                        "sku": item["sku"],
-                        "date": item.get("day", ""),
-                        "quantity": item.get("orders", 0),
-                        "revenue": item.get("revenue", 0)
-                    })
+            # Преобразуем заказы в формат продаж
+            for order in result["orders"]:
+                if "items" in order:
+                    for item in order["items"]:
+                        sales_data.append({
+                            "sku": item.get("offer_id", ""),
+                            "date": order.get("created_at", "").split("T")[0],
+                            "quantity": item.get("quantity", 0),
+                            "revenue": item.get("price", {}).get("price", 0)
+                        })
             
-            if len(result["data"]) < 1000:
+            if len(result["orders"]) < 1000:
                 break
                 
             offset += 1000
@@ -211,24 +201,24 @@ class OzonAPI:
             logger.error("Не удалось получить список товаров")
             return []
         
-        # Получаем остатки для каждого товара
-        stocks_data = []
-        for product in products:
-            if "id" in product:
-                # Попробуем получить информацию о товаре с остатками
-                endpoint = "/v3/product/info/list"
-                data = {
-                    "product_id": [product["id"]]
-                }
-                
-                result = self._make_request(endpoint, data)
-                if result and "items" in result and result["items"]:
-                    item = result["items"][0]
+        # Попробуем получить остатки для всех товаров сразу
+        product_ids = [product["id"] for product in products if "id" in product]
+        
+        if product_ids:
+            endpoint = "/v3/product/info/list"
+            data = {
+                "product_id": product_ids
+            }
+            
+            result = self._make_request(endpoint, data)
+            if result and "items" in result and result["items"]:
+                stocks_data = []
+                for item in result["items"]:
                     # Извлекаем информацию об остатках из данных товара
                     if "stock_info" in item:
                         stock_info = item["stock_info"]
                         stocks_data.append({
-                            "sku": product.get("offer_id", ""),
+                            "sku": item.get("offer_id", ""),
                             "stock": stock_info.get("stock", 0),
                             "reserved": stock_info.get("reserved", 0)
                         })
@@ -237,15 +227,18 @@ class OzonAPI:
                         stocks = item["stocks"]
                         if stocks:
                             stocks_data.append({
-                                "sku": product.get("offer_id", ""),
+                                "sku": item.get("offer_id", ""),
                                 "stock": stocks[0].get("stock", 0),
                                 "reserved": stocks[0].get("reserved", 0)
                             })
+                
+                if stocks_data:
+                    logger.info(f"Получено {len(stocks_data)} записей об остатках из API")
+                    return stocks_data
         
         # Если нет данных из API, используем тестовые данные
-        if not stocks_data:
-            logger.warning("Нет данных об остатках из API, используем тестовые данные")
-            stocks_data = self._generate_test_stocks_data()
+        logger.warning("Нет данных об остатках из API, используем тестовые данные")
+        stocks_data = self._generate_test_stocks_data()
         
         logger.info(f"Получено {len(stocks_data)} записей об остатках")
         return stocks_data
