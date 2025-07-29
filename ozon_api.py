@@ -173,7 +173,12 @@ class OzonAPI:
         endpoint = "/v3/product/list"
         data = {
             "limit": 1000,
-            "offset": 0
+            "offset": 0,
+            "filter": {
+                "visibility_details": {
+                    "product_ids": []
+                }
+            }
         }
         
         try:
