@@ -129,7 +129,7 @@ async def main():
         # Рассчитываем прогноз
         forecast_data = calculator.calculate_forecast(sales_df, stocks_df)
         
-        if not forecast_data:
+        if forecast_data.empty:
             logger.error("Не удалось рассчитать прогноз закупок")
             await telegram.send_message("❌ Ошибка: Не удалось рассчитать прогноз закупок")
             return
