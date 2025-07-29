@@ -105,20 +105,16 @@ async def main():
             sheets.clear_all_synthetic_data()
             sheets.write_stock_data(current_stocks)
         else:
-            logger.warning("Нет данных об остатках из API, генерируем реалистичные синтетические остатки")
-            # Генерируем реалистичные синтетические остатки для тестирования
-            current_stocks = stock_tracker.generate_realistic_stocks_data()
-            stock_tracker.save_stock_data(current_stocks)
-            logger.info(f"Сохранено {len(current_stocks)} синтетических записей об остатках")
+            logger.warning("Нет данных об остатках для сохранения")
         
         # Получаем данные о продажах из API с кэшированием
         logger.info("Получение данных о продажах из API...")
         sales_data = cached_api.get_sales_data_with_cache(days=180)
         
         if not sales_data:
-            logger.warning("Нет данных о продажах из API, используем реалистичные синтетические данные")
-            # Fallback: используем реалистичные синтетические данные для тестирования ML-моделей
-            sales_data = stock_tracker.generate_realistic_sales_data(days=180)
+            logger.warning("Нет данных о продажах из API, используем оценку из изменений остатков")
+            # Fallback: используем оценку из изменений остатков
+            sales_data = stock_tracker.estimate_sales_from_stock_changes(days=180)
         
         logger.info(f"Получено {len(sales_data)} записей о продажах")
         

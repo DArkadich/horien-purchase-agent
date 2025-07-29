@@ -93,12 +93,22 @@ def validate_config() -> bool:
     ]
     
     missing_vars = []
+    placeholder_vars = []
+    
     for var in required_vars:
-        if not globals().get(var):
+        value = globals().get(var)
+        if not value:
             missing_vars.append(var)
+        elif 'your_' in str(value) or 'here' in str(value):
+            placeholder_vars.append(f"{var}={value}")
     
     if missing_vars:
         logger.error(f"Отсутствуют обязательные переменные окружения: {missing_vars}")
+        return False
+    
+    if placeholder_vars:
+        logger.error(f"Обнаружены placeholder значения в конфигурации: {placeholder_vars}")
+        logger.error("Пожалуйста, замените placeholder значения на реальные в файле .env")
         return False
     
     logger.info("Конфигурация загружена успешно")

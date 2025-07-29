@@ -11,7 +11,6 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 import logging
-import random
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -182,107 +181,7 @@ class StockTracker:
         logger.info(f"Оценено {len(sales_data)} записей о продажах на основе изменений остатков")
         return sales_data
     
-    def generate_realistic_sales_data(self, days: int = 180) -> List[Dict[str, Any]]:
-        """Генерирует реалистичные синтетические данные о продажах для тестирования"""
-        logger.info(f"Генерация реалистичных синтетических данных о продажах за {days} дней...")
-        
-        sales_data = []
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=days)
-        
-        # Получаем список всех SKU из базы данных
-        skus = self.get_all_skus()
-        
-        if not skus:
-            logger.warning("Нет SKU в базе данных, создаем тестовые SKU")
-            skus = ['300050', '300075', '300125', '300150', '300175', '300200', '300225', '300250']
-        
-        for sku in skus:
-            # Генерируем реалистичные продажи для каждого SKU
-            base_daily_sales = random.uniform(0.5, 3.0)  # Базовая дневная продажа
-            weekly_pattern = [1.2, 1.0, 0.8, 0.9, 1.1, 1.3, 1.4]  # Недельный паттерн (пн-вс)
-            monthly_trend = random.uniform(0.8, 1.2)  # Месячный тренд
-            
-            current_date = start_date
-            while current_date <= end_date:
-                # Базовые продажи
-                daily_sales = base_daily_sales
-                
-                # Применяем недельный паттерн
-                day_of_week = current_date.weekday()
-                weekly_multiplier = weekly_pattern[day_of_week]
-                daily_sales *= weekly_multiplier
-                
-                # Применяем месячный тренд
-                month_progress = current_date.day / 30.0
-                monthly_multiplier = 1 + (monthly_trend - 1) * month_progress
-                daily_sales *= monthly_multiplier
-                
-                # Добавляем случайные колебания
-                noise = random.uniform(0.7, 1.3)
-                daily_sales *= noise
-                
-                # Округляем до целых чисел
-                quantity = max(0, int(round(daily_sales)))
-                
-                # Оцениваем выручку (примерная цена)
-                estimated_price = random.uniform(800, 1500)
-                revenue = quantity * estimated_price
-                
-                if quantity > 0:  # Добавляем только дни с продажами
-                    sales_data.append({
-                        "sku": sku,
-                        "date": current_date.strftime("%Y-%m-%d"),
-                        "quantity": quantity,
-                        "revenue": revenue
-                    })
-                
-                current_date += timedelta(days=1)
-        
-        logger.info(f"Сгенерировано {len(sales_data)} реалистичных записей о продажах")
-        return sales_data
-    
-    def generate_realistic_stocks_data(self) -> List[Dict[str, Any]]:
-        """Генерирует реалистичные синтетические данные об остатках для тестирования"""
-        logger.info("Генерация реалистичных синтетических данных об остатках...")
-        
-        stocks_data = []
-        
-        # Получаем список всех SKU из базы данных
-        skus = self.get_all_skus()
-        
-        if not skus:
-            logger.warning("Нет SKU в базе данных, создаем тестовые SKU")
-            skus = ['300050', '300075', '300125', '300150', '300175', '300200', '300225', '300250']
-        
-        for sku in skus:
-            # Генерируем реалистичные остатки для каждого SKU
-            base_stock = random.randint(5, 50)  # Базовый остаток
-            reserved = random.randint(0, min(5, base_stock))  # Зарезервировано
-            
-            # Добавляем случайные колебания
-            stock_variation = random.uniform(0.7, 1.3)
-            final_stock = max(0, int(round(base_stock * stock_variation)))
-            
-            # Генерируем название товара на основе SKU
-            if sku.startswith('300'):
-                name = f"Контактные линзы Horien на 1 день -{sku[3:5]},{sku[5:]} 30 шт."
-            elif sku.startswith('305'):
-                name = f"Контактные линзы Horien Diamond55 на месяц -{sku[3:5]},{sku[5:]} 3 шт."
-            elif sku.startswith('60'):
-                name = f"Контактные линзы Horien Diamond55 на месяц -{sku[2:4]},{sku[4:]} 6 шт."
-            else:
-                name = f"Товар {sku}"
-            
-            stocks_data.append({
-                "sku": sku,
-                "name": name,
-                "stock": final_stock,
-                "reserved": reserved
-            })
-        
-        logger.info(f"Сгенерировано {len(stocks_data)} реалистичных записей об остатках")
-        return stocks_data
+
     
     def get_all_skus(self) -> List[str]:
         """Получает список всех SKU в базе данных"""
