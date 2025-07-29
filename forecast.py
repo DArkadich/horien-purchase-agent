@@ -14,6 +14,14 @@ from config import (
     get_moq_for_sku, logger
 )
 
+# Импортируем ML интеграцию
+try:
+    from ml_integration import MLForecastIntegration
+    ML_AVAILABLE = True
+except ImportError:
+    ML_AVAILABLE = False
+    logger.warning("ML интеграция недоступна")
+
 class DataValidator:
     """Класс для валидации входных данных"""
     
@@ -1062,4 +1070,65 @@ class PurchaseForecast:
         
         report_lines.append("=" * 60)
         
-        return "\n".join(report_lines) 
+        return "\n".join(report_lines)
+    
+    def calculate_ml_enhanced_forecast(self, sales_data: List[Dict[str, Any]], 
+                                     stocks_data: List[Dict[str, Any]]) -> pd.DataFrame:
+        """
+        Рассчитывает прогноз с улучшением от ML-моделей
+        """
+        logger.info("Расчет ML-улучшенного прогноза...")
+        
+        if not ML_AVAILABLE:
+            logger.warning("ML интеграция недоступна, используем базовый прогноз")
+            return self.calculate_forecast(
+                self.prepare_sales_data(sales_data),
+                self.prepare_stocks_data(stocks_data)
+            )
+        
+        try:
+            # Создаем ML интеграцию
+            ml_integration = MLForecastIntegration()
+            
+            # Получаем базовый прогноз
+            sales_df = self.prepare_sales_data(sales_data)
+            stocks_df = self.prepare_stocks_data(stocks_data)
+            base_forecast = self.calculate_forecast(sales_df, stocks_df)
+            
+            # Улучшаем прогноз с помощью ML
+            enhanced_forecast = ml_integration.enhance_forecast_with_ml(
+                base_forecast, sales_data
+            )
+            
+            # Генерируем ML-отчет
+            ml_report = ml_integration.generate_ml_forecast_report(sales_data, stocks_data)
+            
+            if 'error' not in ml_report:
+                logger.info("ML-отчет сгенерирован успешно")
+                # Можно сохранить отчет в файл или базу данных
+            
+            logger.info(f"ML-улучшенный прогноз рассчитан для {len(enhanced_forecast)} SKU")
+            return enhanced_forecast
+            
+        except Exception as e:
+            logger.error(f"Ошибка расчета ML-улучшенного прогноза: {e}")
+            # Возвращаем базовый прогноз в случае ошибки
+            return self.calculate_forecast(
+                self.prepare_sales_data(sales_data),
+                self.prepare_stocks_data(stocks_data)
+            )
+    
+    def generate_ml_forecast_report(self, sales_data: List[Dict[str, Any]], 
+                                  stocks_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Генерирует отчет с ML-прогнозом
+        """
+        if not ML_AVAILABLE:
+            return {'error': 'ML интеграция недоступна'}
+        
+        try:
+            ml_integration = MLForecastIntegration()
+            return ml_integration.generate_ml_forecast_report(sales_data, stocks_data)
+        except Exception as e:
+            logger.error(f"Ошибка генерации ML-отчета: {e}")
+            return {'error': str(e)} 
