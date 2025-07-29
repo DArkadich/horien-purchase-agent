@@ -23,28 +23,16 @@ logger = logging.getLogger(__name__)
 
 # Минимальные партии для закупки по каждому SKU (MOQ - Minimum Order Quantity)
 MINIMUM_ORDER_QUANTITIES = {
-    "линза -3.5": 5,
-    "линза -3.0": 5,
-    "линза -2.5": 5,
-    "линза -2.0": 5,
-    "линза -1.5": 5,
-    "линза -1.0": 5,
-    "линза -0.5": 5,
-    "линза +0.5": 5,
-    "линза +1.0": 5,
-    "линза +1.5": 5,
-    "линза +2.0": 5,
-    "линза +2.5": 5,
-    "линза +3.0": 5,
-    "линза +3.5": 5,
-    "раствор": 24,
-    "универсальный раствор": 24,
+    # Растворы - конкретные SKU
+    "360360": 24,
+    "500500": 24,
+    "120120": 48,
     # Добавьте другие SKU по необходимости
 }
 
 # Настройки прогнозирования
-DAYS_FORECAST_SHORT = int(os.getenv('DAYS_FORECAST_SHORT', 40))
-DAYS_FORECAST_LONG = int(os.getenv('DAYS_FORECAST_LONG', 120))
+DAYS_FORECAST_SHORT = int(os.getenv('DAYS_FORECAST_SHORT', 30))
+DAYS_FORECAST_LONG = int(os.getenv('DAYS_FORECAST_LONG', 30))
 # Настройки анализа продаж
 SALES_HISTORY_DAYS = int(os.getenv('SALES_HISTORY_DAYS', 180))
 
@@ -85,4 +73,20 @@ def get_moq_for_sku(sku_name: str) -> int:
     """
     Возвращает минимальную партию для закупки по SKU
     """
-    return MINIMUM_ORDER_QUANTITIES.get(sku_name, 5)  # По умолчанию 5 шт 
+    # Проверяем конкретные SKU
+    if sku_name in MINIMUM_ORDER_QUANTITIES:
+        return MINIMUM_ORDER_QUANTITIES[sku_name]
+    
+    # Правила для линз по паттернам SKU
+    if len(sku_name) == 6 and sku_name.startswith('30'):
+        # Однодневные линзы (6 цифр, начинаются на 30)
+        return 1
+    elif len(sku_name) == 5 and sku_name.startswith('6'):
+        # Месячные линзы по 6 шт (5 цифр, начинаются на 6)
+        return 1
+    elif len(sku_name) == 5 and sku_name.startswith('3'):
+        # Месячные линзы по 3 шт (5 цифр, начинаются на 3)
+        return 1
+    
+    # По умолчанию для неизвестных SKU
+    return 5 
