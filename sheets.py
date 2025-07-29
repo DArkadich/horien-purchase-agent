@@ -295,39 +295,48 @@ class GoogleSheets:
             logger.error(f"Ошибка получения дат последних заказов: {e}")
             return {}
     
-    def create_summary_sheet(self, summary_data: Dict[str, Any]):
+    def create_summary_sheet(self, report_data: List[Dict[str, Any]]):
         """
         Создает сводный лист с общей статистикой
         """
         logger.info("Создание сводного листа...")
+        
+        if not report_data:
+            logger.warning("Нет данных для создания сводного листа")
+            return
+        
+        # Подсчитываем статистику
+        total_items = len(report_data)
+        high_priority = len([item for item in report_data if item.get('urgency') == 'HIGH'])
+        medium_priority = len([item for item in report_data if item.get('urgency') == 'MEDIUM'])
+        low_priority = len([item for item in report_data if item.get('urgency') == 'LOW'])
         
         # Подготавливаем данные для сводки
         summary_rows = [
             ['Сводка по закупкам'],
             [''],
             ['Дата отчета', datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
-            ['Всего позиций для закупки', summary_data.get('total_items', 0)],
-            ['Высокий приоритет', summary_data.get('high_priority', 0)],
-            ['Средний приоритет', summary_data.get('medium_priority', 0)],
-            ['Низкий приоритет', summary_data.get('low_priority', 0)],
-            ['Общая сумма закупки', summary_data.get('total_value', 0)],
+            ['Всего позиций для закупки', total_items],
+            ['Высокий приоритет', high_priority],
+            ['Средний приоритет', medium_priority],
+            ['Низкий приоритет', low_priority],
             [''],
             ['Детализация по SKU:']
         ]
         
         # Добавляем детализацию
-        for item in summary_data.get('items', []):
+        for item in report_data:
             summary_rows.append([
-                item['sku'],
-                f"Заказать {item['recommended_quantity']} шт",
-                f"Хватит на {item['days_until_stockout']} дней"
+                item.get('sku', ''),
+                f"Заказать {item.get('recommended_quantity', 0)} шт",
+                f"Хватит на {item.get('days_until_stockout', 0)} дней"
             ])
         
         # Записываем в отдельный лист без кавычек
         range_name = f"Summary!A1:C{len(summary_rows)}"
         self.update_sheet_data(range_name, summary_rows)
         
-        logger.info("Сводный лист создан") 
+        logger.info("Сводный лист создан")
     
     def write_stock_data(self, stock_data: List[Dict[str, Any]]):
         """
