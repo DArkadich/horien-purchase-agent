@@ -1,0 +1,183 @@
+version: '3.8'
+
+services:
+  # Redis для кэширования
+  redis:
+    image: redis:7-alpine
+    container_name: ozon-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # RabbitMQ для очередей сообщений
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: ozon-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: unless-stopped
+
+  # PostgreSQL для основной базы данных
+  postgres:
+    image: postgres:15-alpine
+    container_name: ozon-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ozon_microservices
+      POSTGRES_USER: ozon_user
+      POSTGRES_PASSWORD: ozon_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # API Gateway
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    container_name: ozon-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      - redis
+      - rabbitmq
+    restart: unless-stopped
+    networks:
+      - ozon-network
+
+  # Data Service
+  data-service:
+    build:
+      context: .
+      dockerfile: data-service/Dockerfile
+    container_name: ozon-data-service
+    ports:
+      - "8001:8001"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - POSTGRES_URL=postgresql://ozon_user:ozon_password@postgres:5432/ozon_microservices
+    depends_on:
+      - redis
+      - rabbitmq
+      - postgres
+    restart: unless-stopped
+    networks:
+      - ozon-network
+
+  # Forecast Service
+  forecast-service:
+    build:
+      context: .
+      dockerfile: forecast-service/Dockerfile
+    container_name: ozon-forecast-service
+    ports:
+      - "8002:8002"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - POSTGRES_URL=postgresql://ozon_user:ozon_password@postgres:5432/ozon_microservices
+    depends_on:
+      - redis
+      - rabbitmq
+      - postgres
+    restart: unless-stopped
+    networks:
+      - ozon-network
+
+  # Notification Service
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+    container_name: ozon-notification-service
+    ports:
+      - "8003:8003"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - POSTGRES_URL=postgresql://ozon_user:ozon_password@postgres:5432/ozon_microservices
+    depends_on:
+      - redis
+      - rabbitmq
+      - postgres
+    restart: unless-stopped
+    networks:
+      - ozon-network
+
+  # Monitoring Service
+  monitoring-service:
+    build:
+      context: .
+      dockerfile: monitoring-service/Dockerfile
+    container_name: ozon-monitoring-service
+    ports:
+      - "8004:8004"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - POSTGRES_URL=postgresql://ozon_user:ozon_password@postgres:5432/ozon_microservices
+    depends_on:
+      - redis
+      - rabbitmq
+      - postgres
+    restart: unless-stopped
+    networks:
+      - ozon-network
+
+  # Storage Service
+  storage-service:
+    build:
+      context: .
+      dockerfile: storage-service/Dockerfile
+    container_name: ozon-storage-service
+    ports:
+      - "8005:8005"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - POSTGRES_URL=postgresql://ozon_user:ozon_password@postgres:5432/ozon_microservices
+    depends_on:
+      - redis
+      - rabbitmq
+      - postgres
+    restart: unless-stopped
+    networks:
+      - ozon-network
+
+  # Nginx для балансировки нагрузки
+  nginx:
+    image: nginx:alpine
+    container_name: ozon-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - gateway
+    restart: unless-stopped
+    networks:
+      - ozon-network
+
+volumes:
+  redis_data:
+  rabbitmq_data:
+  postgres_data:
+
+networks:
+  ozon-network:
+    driver: bridge 

@@ -36,9 +36,44 @@ DAYS_FORECAST_LONG = int(os.getenv('DAYS_FORECAST_LONG', 45))
 # Настройки анализа продаж
 SALES_HISTORY_DAYS = int(os.getenv('SALES_HISTORY_DAYS', 180))
 
-# Настройки API
-OZON_API_KEY = os.getenv('OZON_API_KEY')
+# Ozon API настройки
 OZON_CLIENT_ID = os.getenv('OZON_CLIENT_ID')
+OZON_API_KEY = os.getenv('OZON_API_KEY')
+OZON_BASE_URL = os.getenv('OZON_BASE_URL', 'https://api-seller.ozon.ru')
+
+# Настройки retry-логики для API
+API_MAX_RETRIES = int(os.getenv('API_MAX_RETRIES', 3))
+API_BASE_DELAY = float(os.getenv('API_BASE_DELAY', 2.0))
+API_MAX_DELAY = float(os.getenv('API_MAX_DELAY', 30.0))
+API_TIMEOUT = int(os.getenv('API_TIMEOUT', 30))
+
+# Настройки кэширования
+CACHE_ENABLED = os.getenv('CACHE_ENABLED', 'true').lower() == 'true'
+CACHE_DIR = os.getenv('CACHE_DIR', 'cache')
+CACHE_DB_PATH = os.getenv('CACHE_DB_PATH', 'cache/cache.db')
+
+# TTL для различных типов кэша (в часах)
+CACHE_TTL_PRODUCTS = float(os.getenv('CACHE_TTL_PRODUCTS', 2.0))  # 2 часа
+CACHE_TTL_SALES = float(os.getenv('CACHE_TTL_SALES', 1.0))        # 1 час
+CACHE_TTL_STOCKS = float(os.getenv('CACHE_TTL_STOCKS', 0.5))      # 30 минут
+CACHE_TTL_ANALYTICS = float(os.getenv('CACHE_TTL_ANALYTICS', 1.0)) # 1 час
+
+# Настройки мониторинга API
+API_MONITORING_ENABLED = os.getenv('API_MONITORING_ENABLED', 'true').lower() == 'true'
+API_MONITORING_INTERVAL = int(os.getenv('API_MONITORING_INTERVAL', 300))  # 5 минут
+API_HEALTHY_THRESHOLD = int(os.getenv('API_HEALTHY_THRESHOLD', 200))      # 200мс
+API_DEGRADED_THRESHOLD = int(os.getenv('API_DEGRADED_THRESHOLD', 1000))   # 1000мс
+API_MONITORING_DB_PATH = os.getenv('API_MONITORING_DB_PATH', 'data/api_health.db')
+
+# Настройки метрик производительности API
+API_METRICS_ENABLED = os.getenv('API_METRICS_ENABLED', 'true').lower() == 'true'
+API_METRICS_DB_PATH = os.getenv('API_METRICS_DB_PATH', 'data/api_metrics.db')
+API_METRICS_RETENTION_DAYS = int(os.getenv('API_METRICS_RETENTION_DAYS', 30))
+API_METRICS_ALERT_THRESHOLDS = {
+    'response_time_ms': int(os.getenv('API_METRICS_RESPONSE_TIME_THRESHOLD', 5000)),
+    'error_rate_percent': float(os.getenv('API_METRICS_ERROR_RATE_THRESHOLD', 5.0)),
+    'success_rate_percent': float(os.getenv('API_METRICS_SUCCESS_RATE_THRESHOLD', 95.0))
+}
 
 # Google Sheets настройки
 GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv('GOOGLE_SERVICE_ACCOUNT_JSON')

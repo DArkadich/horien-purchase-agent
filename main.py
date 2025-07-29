@@ -14,6 +14,9 @@ import asyncio
 # Импорты модулей
 from config import validate_config, logger
 from ozon_api import OzonAPI
+from cache_manager import CacheManager, CachedAPIClient
+from api_monitor import APIMonitor, APIMonitoringService
+from api_metrics import APIMetricsCollector
 from sheets import GoogleSheets
 from telegram_notify import TelegramNotifier
 from forecast import PurchaseForecast
@@ -36,9 +39,38 @@ async def main():
         # Инициализация компонентов
         logger.info("Инициализация компонентов...")
         ozon_api = OzonAPI()
+        cache_manager = CacheManager()
+        cached_api = CachedAPIClient(ozon_api, cache_manager)
+        api_monitor = APIMonitor()
+        monitoring_service = APIMonitoringService(ozon_api, api_monitor, telegram)
+        metrics_collector = APIMetricsCollector()
         sheets = GoogleSheets()
         telegram = TelegramNotifier()
         stock_tracker = StockTracker()
+        
+        # Очищаем истекший кэш
+        expired_count = cache_manager.clear_expired_cache()
+        if expired_count > 0:
+            logger.info(f"Очищено {expired_count} истекших записей кэша")
+        
+        # Логируем статистику кэша
+        cache_stats = cache_manager.get_cache_stats()
+        if cache_stats:
+            logger.info(f"Статистика кэша: {cache_stats['total_entries']} записей, {cache_stats['expired_entries']} истекших")
+            for cache_type, stats in cache_stats.get('type_stats', {}).items():
+                logger.info(f"  {cache_type}: {stats['count']} записей, {stats['total_size']} байт")
+        
+        # Проверяем здоровье API
+        logger.info("Проверка здоровья API...")
+        health_check = api_monitor.check_api_health(ozon_api, "products")
+        logger.info(f"API статус: {health_check.status.value} ({health_check.response_time:.0f}мс)")
+        
+        if health_check.status.value == "down":
+            logger.warning("API недоступен, но продолжаем работу с кэшированными данными")
+            await telegram.send_message("⚠️ API недоступен, используем кэшированные данные")
+        
+        # Запускаем мониторинг API в фоне
+        monitoring_task = asyncio.create_task(monitoring_service.start_monitoring())
         
         # Отправка уведомления о запуске
         await telegram.send_message("🚀 Агент закупок Horiens запущен")
@@ -46,18 +78,18 @@ async def main():
         # Получение данных из Ozon API
         logger.info("Получение данных из Ozon API...")
         
-        # Получаем товары
-        products = ozon_api.get_products()
+        # Получаем товары с кэшированием
+        products = cached_api.get_products_with_cache()
         if not products:
-            logger.error("Не удалось получить товары")
-            await telegram.send_message("❌ Ошибка: Не удалось получить товары из Ozon API")
+            logger.error("Не удалось получить товары из Ozon API")
+            await telegram.send_message("❌ Критическая ошибка: Не удалось получить товары из Ozon API. Проверьте настройки API ключей и доступность сервиса.")
             return
         
         logger.info(f"Успешно получены товары: {len(products)} шт")
         
         # Сохранение данных об остатках
         logger.info("Сохранение данных об остатках...")
-        current_stocks = ozon_api.get_stocks_data()
+        current_stocks = cached_api.get_stocks_data_with_cache()
         
         # Отладочная информация
         logger.info(f"Получено данных об остатках: {len(current_stocks) if current_stocks else 0}")
@@ -75,9 +107,9 @@ async def main():
         else:
             logger.warning("Нет данных об остатках для сохранения")
         
-        # Получаем данные о продажах из API
+        # Получаем данные о продажах из API с кэшированием
         logger.info("Получение данных о продажах из API...")
-        sales_data = ozon_api.get_sales_data(days=180)
+        sales_data = cached_api.get_sales_data_with_cache(days=180)
         
         if not sales_data:
             logger.warning("Нет данных о продажах из API, используем оценку из изменений остатков")
@@ -179,6 +211,16 @@ async def main():
             f"✅ Агент закупок завершил работу за {execution_time:.2f} секунд\n"
             f"📊 Обработано {len(report_data)} позиций для закупки"
         )
+        
+        # Отправляем отчет о здоровье API
+        await monitoring_service.send_health_report(hours=1)
+        
+        # Отправляем отчет о производительности API
+        performance_report = metrics_collector.generate_performance_report(hours=1)
+        await telegram.send_message(performance_report)
+        
+        # Останавливаем мониторинг
+        monitoring_service.stop_monitoring()
         
         logger.info("=" * 50)
         logger.info("Агент закупок завершил работу за %.2f секунд", execution_time)

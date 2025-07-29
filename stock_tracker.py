@@ -154,15 +154,28 @@ class StockTracker:
                         "quantity": sold_quantity,
                         "revenue": revenue
                     })
+                    logger.debug(f"Продажа {sku}: {sold_quantity} шт. ({prev_stock} -> {curr_stock})")
+                
+                # Если остатки не изменились и товар был в наличии - это день без продаж
                 elif prev_stock == curr_stock and curr_stock > 0:
-                    # Если остатки не изменились и товар был в наличии - это день без продаж
                     sales_data.append({
                         "sku": sku,
                         "date": curr_date,
                         "quantity": 0,
                         "revenue": 0
                     })
-                # Если остатки увеличились - это пополнение, не учитываем как продажи
+                    logger.debug(f"День без продаж {sku}: {curr_stock} шт.")
+                
+                # Если остатки увеличились - это поставка, НЕ учитываем как продажи
+                elif prev_stock < curr_stock:
+                    supplied_quantity = curr_stock - prev_stock
+                    logger.info(f"Поставка {sku}: +{supplied_quantity} шт. ({prev_stock} -> {curr_stock})")
+                    # НЕ добавляем в sales_data - поставки не являются продажами
+                
+                # Если остатки не изменились и товар отсутствует - это день без остатков
+                elif prev_stock == curr_stock and curr_stock == 0:
+                    logger.debug(f"День без остатков {sku}: 0 шт.")
+                    # НЕ добавляем в sales_data - нет товара для продажи
         
         conn.close()
         logger.info(f"Оценено {len(sales_data)} записей о продажах на основе изменений остатков")
@@ -183,16 +196,9 @@ def main():
     """Основная функция для ежедневного сбора данных"""
     tracker = StockTracker()
     
-    # Здесь нужно будет добавить получение данных из Ozon API
-    # Пока используем тестовые данные
-    test_stock_data = [
-        {"sku": "TEST001", "stock": 10, "reserved": 2},
-        {"sku": "TEST002", "stock": 15, "reserved": 1},
-        {"sku": "TEST003", "stock": 5, "reserved": 0}
-    ]
-    
-    tracker.save_stock_data(test_stock_data)
-    logger.info("Ежедневный сбор данных об остатках завершен")
+    # TODO: Интегрировать с Ozon API для получения реальных данных об остатках
+    # Пока функция не используется в production
+    logger.info("StockTracker main() - требуется интеграция с API для получения реальных данных")
 
 if __name__ == "__main__":
     main() 

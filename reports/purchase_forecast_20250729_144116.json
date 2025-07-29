@@ -1,0 +1,316 @@
+{
+  "metadata": {
+    "generated_at": "2025-07-29T14:41:16.720953",
+    "total_items": 27,
+    "forecast_period_short": 40,
+    "forecast_period_long": 120,
+    "version": "1.0"
+  },
+  "summary": {
+    "high_confidence": 27,
+    "medium_confidence": 0,
+    "low_confidence": 0,
+    "high_urgency": 24,
+    "medium_urgency": 2,
+    "low_urgency": 1
+  },
+  "items": [
+    {
+      "sku": "SKU_010",
+      "avg_daily_sales": 9.3,
+      "current_stock": 1,
+      "days_until_stockout": 0.1,
+      "recommended_quantity": 1114,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_002",
+      "avg_daily_sales": 13.43,
+      "current_stock": 2,
+      "days_until_stockout": 0.1,
+      "recommended_quantity": 1609,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_029",
+      "avg_daily_sales": 6.15,
+      "current_stock": 4,
+      "days_until_stockout": 0.7,
+      "recommended_quantity": 734,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_004",
+      "avg_daily_sales": 11.28,
+      "current_stock": 12,
+      "days_until_stockout": 1.1,
+      "recommended_quantity": 1341,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_022",
+      "avg_daily_sales": 12.38,
+      "current_stock": 16,
+      "days_until_stockout": 1.3,
+      "recommended_quantity": 1469,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_007",
+      "avg_daily_sales": 3.0,
+      "current_stock": 4,
+      "days_until_stockout": 1.3,
+      "recommended_quantity": 356,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_005",
+      "avg_daily_sales": 11.11,
+      "current_stock": 19,
+      "days_until_stockout": 1.7,
+      "recommended_quantity": 1315,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_011",
+      "avg_daily_sales": 21.67,
+      "current_stock": 40,
+      "days_until_stockout": 1.8,
+      "recommended_quantity": 2560,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_016",
+      "avg_daily_sales": 18.81,
+      "current_stock": 53,
+      "days_until_stockout": 2.8,
+      "recommended_quantity": 2205,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_012",
+      "avg_daily_sales": 19.18,
+      "current_stock": 60,
+      "days_until_stockout": 3.1,
+      "recommended_quantity": 2242,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_003",
+      "avg_daily_sales": 8.28,
+      "current_stock": 26,
+      "days_until_stockout": 3.1,
+      "recommended_quantity": 967,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_013",
+      "avg_daily_sales": 19.13,
+      "current_stock": 62,
+      "days_until_stockout": 3.2,
+      "recommended_quantity": 2234,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_028",
+      "avg_daily_sales": 6.41,
+      "current_stock": 22,
+      "days_until_stockout": 3.4,
+      "recommended_quantity": 747,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_025",
+      "avg_daily_sales": 8.97,
+      "current_stock": 33,
+      "days_until_stockout": 3.7,
+      "recommended_quantity": 1043,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_030",
+      "avg_daily_sales": 20.36,
+      "current_stock": 78,
+      "days_until_stockout": 3.8,
+      "recommended_quantity": 2365,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_021",
+      "avg_daily_sales": 20.62,
+      "current_stock": 84,
+      "days_until_stockout": 4.1,
+      "recommended_quantity": 2390,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_024",
+      "avg_daily_sales": 16.54,
+      "current_stock": 69,
+      "days_until_stockout": 4.2,
+      "recommended_quantity": 1916,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_015",
+      "avg_daily_sales": 3.31,
+      "current_stock": 17,
+      "days_until_stockout": 5.1,
+      "recommended_quantity": 380,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_019",
+      "avg_daily_sales": 13.52,
+      "current_stock": 75,
+      "days_until_stockout": 5.5,
+      "recommended_quantity": 1548,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_027",
+      "avg_daily_sales": 10.84,
+      "current_stock": 66,
+      "days_until_stockout": 6.1,
+      "recommended_quantity": 1234,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_001",
+      "avg_daily_sales": 3.68,
+      "current_stock": 24,
+      "days_until_stockout": 6.5,
+      "recommended_quantity": 417,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_026",
+      "avg_daily_sales": 5.2,
+      "current_stock": 38,
+      "days_until_stockout": 7.3,
+      "recommended_quantity": 586,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_023",
+      "avg_daily_sales": 4.98,
+      "current_stock": 40,
+      "days_until_stockout": 8.0,
+      "recommended_quantity": 558,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_020",
+      "avg_daily_sales": 6.05,
+      "current_stock": 59,
+      "days_until_stockout": 9.7,
+      "recommended_quantity": 667,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "HIGH"
+    },
+    {
+      "sku": "SKU_006",
+      "avg_daily_sales": 3.65,
+      "current_stock": 39,
+      "days_until_stockout": 10.7,
+      "recommended_quantity": 399,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "MEDIUM"
+    },
+    {
+      "sku": "SKU_009",
+      "avg_daily_sales": 3.67,
+      "current_stock": 67,
+      "days_until_stockout": 18.2,
+      "recommended_quantity": 374,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "MEDIUM"
+    },
+    {
+      "sku": "SKU_008",
+      "avg_daily_sales": 3.52,
+      "current_stock": 76,
+      "days_until_stockout": 21.6,
+      "recommended_quantity": 347,
+      "moq": 5,
+      "forecast_quality": "GOOD",
+      "confidence": "HIGH",
+      "urgency": "LOW"
+    }
+  ]
+}

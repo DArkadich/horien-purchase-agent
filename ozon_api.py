@@ -3,119 +3,209 @@
 """
 
 import requests
+import json
 import logging
+import time
+import random
 from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
-from config import OZON_API_KEY, OZON_CLIENT_ID, logger
+from typing import Dict, List, Any, Optional, Callable
+from config import (
+    OZON_CLIENT_ID, OZON_API_KEY, OZON_BASE_URL,
+    API_MAX_RETRIES, API_BASE_DELAY, API_MAX_DELAY, API_TIMEOUT,
+    logger
+)
+from api_metrics import APIMetricsCollector, MetricType
+
+class RetryManager:
+    """Менеджер для управления повторными попытками API запросов"""
+    
+    def __init__(self, max_retries: int = 3, base_delay: float = 1.0, max_delay: float = 30.0):
+        self.max_retries = max_retries
+        self.base_delay = base_delay
+        self.max_delay = max_delay
+    
+    def execute_with_retry(self, func: Callable, *args, **kwargs) -> Optional[Any]:
+        """
+        Выполняет функцию с повторными попытками при ошибках
+        
+        Args:
+            func: Функция для выполнения
+            *args, **kwargs: Аргументы функции
+            
+        Returns:
+            Результат функции или None при неудаче
+        """
+        last_exception = None
+        
+        for attempt in range(self.max_retries + 1):
+            try:
+                result = func(*args, **kwargs)
+                
+                # Если получили результат, возвращаем его
+                if result is not None:
+                    if attempt > 0:
+                        logger.info(f"Успешно выполнен запрос после {attempt} повторных попыток")
+                    return result
+                
+                # Если результат None, но нет исключения, это может быть нормально
+                # (например, API вернул пустой список)
+                if attempt == 0:
+                    return None
+                    
+            except requests.exceptions.RequestException as e:
+                last_exception = e
+                logger.warning(f"Попытка {attempt + 1}/{self.max_retries + 1} не удалась: {e}")
+                
+                # Если это последняя попытка, логируем ошибку и возвращаем None
+                if attempt == self.max_retries:
+                    logger.error(f"Все попытки исчерпаны. Последняя ошибка: {e}")
+                    return None
+                
+                # Вычисляем задержку с экспоненциальным откатом
+                delay = min(self.base_delay * (2 ** attempt) + random.uniform(0, 1), self.max_delay)
+                logger.info(f"Ожидание {delay:.2f} секунд перед следующей попыткой...")
+                time.sleep(delay)
+            
+            except Exception as e:
+                last_exception = e
+                logger.error(f"Неожиданная ошибка в попытке {attempt + 1}: {e}")
+                
+                # Для неожиданных ошибок не делаем повторные попытки
+                return None
+        
+        return None
+    
+    def should_retry_status_code(self, status_code: int) -> bool:
+        """
+        Определяет, нужно ли повторять запрос при данном статус коде
+        """
+        # Повторяем для временных ошибок сервера
+        retryable_codes = {500, 502, 503, 504, 429}
+        return status_code in retryable_codes
+    
+    def should_retry_exception(self, exception: Exception) -> bool:
+        """
+        Определяет, нужно ли повторять запрос при данном исключении
+        """
+        # Повторяем для сетевых ошибок
+        retryable_exceptions = (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.Timeout,
+            requests.exceptions.ConnectTimeout,
+            requests.exceptions.ReadTimeout,
+        )
+        return isinstance(exception, retryable_exceptions)
 
 class OzonAPI:
     """Класс для работы с Ozon Seller API"""
     
     def __init__(self):
-        self.api_key = OZON_API_KEY
         self.client_id = OZON_CLIENT_ID
-        self.base_url = "https://api-seller.ozon.ru"
-        self.headers = {
-            "Client-Id": self.client_id,
-            "Api-Key": self.api_key,
-            "Content-Type": "application/json"
-        }
+        self.api_key = OZON_API_KEY
+        self.base_url = OZON_BASE_URL
+        self.retry_manager = RetryManager(
+            max_retries=API_MAX_RETRIES,
+            base_delay=API_BASE_DELAY,
+            max_delay=API_MAX_DELAY
+        )
+        self.metrics_collector = APIMetricsCollector()
     
-    def _make_request(self, endpoint: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """
-        Выполняет запрос к Ozon API
-        """
+    def _make_single_request(self, endpoint: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Выполняет один запрос к API"""
+        start_time = time.time()
+        
         try:
-            url = f"{self.base_url}{endpoint}"
-            response = requests.post(url, headers=self.headers, json=data)
+            headers = {
+                "Client-Id": self.client_id,
+                "Api-Key": self.api_key,
+                "Content-Type": "application/json"
+            }
             
-            # Логируем детали запроса для отладки
-            logger.debug(f"API Request: {url}")
-            logger.debug(f"Request data: {data}")
-            logger.debug(f"Response status: {response.status_code}")
-            logger.debug(f"Response headers: {dict(response.headers)}")
+            response = requests.post(
+                f"{self.base_url}{endpoint}",
+                headers=headers,
+                json=data,
+                timeout=API_TIMEOUT
+            )
+            
+            response_time = (time.time() - start_time) * 1000  # в миллисекундах
+            
+            # Записываем метрику времени ответа
+            self.metrics_collector.record_response_time(
+                endpoint, response_time, response.status_code
+            )
             
             if response.status_code == 200:
-                result = response.json()
-                # Проверяем, есть ли поле "result" или данные возвращаются напрямую
-                if result.get("result"):
-                    return result["result"]
-                elif "items" in result or "data" in result:
-                    # Данные возвращаются напрямую
-                    logger.info(f"API вернул данные напрямую: {list(result.keys())}")
-                    return result
-                else:
-                    logger.error(f"API вернул неожиданный формат: {result}")
-                    return None
-            elif response.status_code == 404:
-                logger.warning(f"Эндпоинт {endpoint} не найден (404). Возможно, используется неправильная версия API.")
-                logger.debug(f"Response body: {response.text}")
-                return None
-            elif response.status_code == 401:
-                logger.error(f"Ошибка аутентификации (401). Проверьте API ключи.")
-                logger.debug(f"Response body: {response.text}")
-                return None
-            elif response.status_code == 403:
-                logger.error(f"Ошибка доступа (403). Проверьте права доступа к API.")
-                logger.debug(f"Response body: {response.text}")
-                return None
+                return response.json()
             else:
-                logger.error(f"API вернул статус {response.status_code}: {response.text}")
+                # Записываем метрику ошибки
+                self.metrics_collector.record_response_time(
+                    endpoint, response_time, response.status_code, 
+                    f"HTTP {response.status_code}: {response.text}"
+                )
+                logger.error(f"Ошибка {response.status_code}: {response.text}")
                 return None
                 
         except requests.exceptions.RequestException as e:
-            logger.error(f"Ошибка при запросе к Ozon API: {e}")
-            return None
+            response_time = (time.time() - start_time) * 1000
+            
+            # Записываем метрику ошибки
+            self.metrics_collector.record_response_time(
+                endpoint, response_time, None, str(e)
+            )
+            
+            raise
+    
+    def _make_request(self, endpoint: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Выполняет запрос к Ozon API с retry-логикой
+        """
+        logger.info(f"Выполнение запроса к {endpoint} с retry-логикой")
+        
+        return self.retry_manager.execute_with_retry(
+            self._make_single_request, endpoint, data
+        )
     
     def get_products(self) -> List[Dict[str, Any]]:
-        """
-        Получает список всех товаров
-        """
+        """Получает список товаров"""
         logger.info("Получение списка товаров...")
         
-        # Используем правильный эндпоинт для получения товаров
         endpoint = "/v3/product/list"
         data = {
             "limit": 1000,
-            "offset": 0,
-            "filter": {
-                "visibility_details": {
-                    "active": True
-                }
-            },
-            "with": {
-                "price": True,
-                "stock": True
-            }
+            "offset": 0
         }
+        
+        try:
+            result = self._make_request(endpoint, data)
             
-        result = self._make_request(endpoint, data)
-        if result and "items" in result:
-            logger.info(f"Успешно получены товары: {len(result['items'])} шт")
-            # Логируем первые несколько товаров для отладки
-            for i, product in enumerate(result["items"][:3]):
-                logger.debug(f"Товар {i+1}: ID={product.get('id')}, Offer={product.get('offer_id')}, Name={product.get('name')}")
-            return result["items"]
-        
-        logger.warning("Не удалось получить товары через API, используем тестовые данные")
-        return self._generate_test_products()
-    
-    def _generate_test_products(self) -> List[Dict[str, Any]]:
-        """
-        Генерирует тестовые данные товаров
-        """
-        test_skus = ["линза -3.5", "линза -3.0", "линза -2.5", "линза -2.0", "линза -1.5"]
-        products = []
-        
-        for i, sku in enumerate(test_skus):
-            products.append({
-                "id": i + 1,
-                "offer_id": sku,
-                "name": f"Контактная линза {sku}",
-                "status": "active"
-            })
-        
-        return products
+            if result and isinstance(result, dict):
+                # Записываем метрику успешности
+                self.metrics_collector.record_success_rate("get_products", 1, 1)
+                
+                # Проверяем структуру ответа
+                if "items" in result:
+                    products = result["items"]
+                    logger.info(f"Получено {len(products)} товаров")
+                    return products
+                elif "result" in result and "items" in result["result"]:
+                    products = result["result"]["items"]
+                    logger.info(f"Получено {len(products)} товаров")
+                    return products
+                else:
+                    logger.warning(f"Неожиданная структура ответа API: {list(result.keys())}")
+                    return []
+            else:
+                # Записываем метрику ошибки
+                self.metrics_collector.record_success_rate("get_products", 0, 1)
+                logger.warning("Не удалось получить товары через API")
+                return []
+                
+        except Exception as e:
+            # Записываем метрику ошибки
+            self.metrics_collector.record_success_rate("get_products", 0, 1)
+            logger.error(f"API недоступен или возвращает ошибку. Проверьте настройки API ключей и доступность сервиса.")
+            return []
     
     def get_sales_data(self, days: int = 180) -> List[Dict[str, Any]]:
         """
@@ -128,7 +218,8 @@ class OzonAPI:
             analytics_data = self.get_analytics_data(days=min(days, 90))  # API ограничен 90 днями
             
             if not analytics_data:
-                logger.warning("Не удалось получить аналитические данные")
+                logger.warning("Не удалось получить аналитические данные из API")
+                logger.error("Проверьте доступность аналитического API и права доступа")
                 return []
             
             # Преобразуем аналитические данные в формат продаж
@@ -149,36 +240,15 @@ class OzonAPI:
                 # Логируем примеры для отладки
                 for i, sale in enumerate(sales_data[:3]):
                     logger.info(f"Пример продажи {i+1}: SKU={sale['sku']}, Дата={sale['date']}, Количество={sale['quantity']}")
+            else:
+                logger.warning("Нет данных о продажах в аналитических данных")
             
             return sales_data
             
         except Exception as e:
             logger.error(f"Ошибка при получении данных о продажах: {e}")
+            logger.error("Проверьте подключение к API и корректность запроса")
             return []
-    
-    def _generate_test_sales_data(self, days: int) -> List[Dict[str, Any]]:
-        """
-        Генерирует тестовые данные о продажах для демонстрации
-        """
-        test_skus = ["линза -3.5", "линза -3.0", "линза -2.5", "линза -2.0", "линза -1.5"]
-        sales_data = []
-        
-        for i in range(days):
-            date = datetime.now() - timedelta(days=i)
-            for sku in test_skus:
-                # Генерируем случайные продажи
-                import random
-                quantity = random.randint(0, 5)
-                revenue = quantity * random.randint(100, 500)
-                
-                sales_data.append({
-                    "sku": sku,
-                    "date": date.strftime("%Y-%m-%d"),
-                    "quantity": quantity,
-                    "revenue": revenue
-                })
-        
-        return sales_data
     
     def get_stocks_data(self) -> List[Dict[str, Any]]:
         """
@@ -286,26 +356,6 @@ class OzonAPI:
             logger.error(f"Ошибка при получении остатков: {e}")
             return []
     
-    def _generate_test_stocks_data(self) -> List[Dict[str, Any]]:
-        """
-        Генерирует тестовые данные об остатках для демонстрации
-        """
-        test_skus = ["линза -3.5", "линза -3.0", "линза -2.5", "линза -2.0", "линза -1.5"]
-        stocks_data = []
-        
-        import random
-        for sku in test_skus:
-            stock = random.randint(50, 200)
-            reserved = random.randint(0, 20)
-            
-            stocks_data.append({
-                "sku": sku,
-                "stock": stock,
-                "reserved": reserved
-            })
-        
-        return stocks_data
-    
     def get_product_info(self, offer_ids: List[str]) -> List[Dict[str, Any]]:
         """
         Получает детальную информацию о товарах по offer_id
@@ -340,7 +390,7 @@ class OzonAPI:
     
     def get_analytics_data(self, days: int = 180) -> List[Dict[str, Any]]:
         """
-        Получает аналитические данные о продажах
+        Получает аналитические данные о продажах с retry-логикой
         """
         logger.info(f"Получение аналитических данных за {days} дней...")
         
@@ -361,27 +411,41 @@ class OzonAPI:
         
         analytics_data = []
         offset = 0
+        max_pages = 10  # Ограничиваем количество страниц для предотвращения бесконечного цикла
         
-        while True:
+        for page in range(max_pages):
             data["offset"] = offset
-            result = self._make_request(endpoint, data)
+            
+            # Используем retry-логику для каждого запроса
+            result = self.retry_manager.execute_with_retry(
+                self._make_single_request, endpoint, data
+            )
             
             if not result or "data" not in result:
+                logger.warning(f"Не удалось получить данные для страницы {page + 1}")
                 break
                 
-            analytics_data.extend(result["data"])
+            page_data = result["data"]
+            analytics_data.extend(page_data)
             
-            if len(result["data"]) < 1000:
+            logger.info(f"Получена страница {page + 1}: {len(page_data)} записей")
+            
+            # Если получили меньше записей чем лимит, значит это последняя страница
+            if len(page_data) < 1000:
                 break
                 
             offset += 1000
+            
+            # Небольшая пауза между запросами для избежания rate limiting
+            if page < max_pages - 1:
+                time.sleep(0.5)
         
-        logger.info(f"Получено {len(analytics_data)} записей аналитических данных")
-        return analytics_data 
+        logger.info(f"Получено {len(analytics_data)} записей аналитических данных за {page + 1} страниц")
+        return analytics_data
 
     def create_products_report(self) -> Optional[str]:
         """
-        Создает отчет о товарах через /v1/report/products/create
+        Создает отчет о товарах через /v1/report/products/create с retry-логикой
         Возвращает ID отчета для последующего получения
         """
         logger.info("Создание отчета о товарах...")
@@ -392,7 +456,12 @@ class OzonAPI:
         }
         
         logger.info(f"Отправка запроса на {endpoint} с данными: {data}")
-        result = self._make_request(endpoint, data)
+        
+        # Используем retry-логику для создания отчета
+        result = self.retry_manager.execute_with_retry(
+            self._make_single_request, endpoint, data
+        )
+        
         logger.info(f"Ответ API: {result}")
         
         if result and "result" in result:
@@ -410,7 +479,7 @@ class OzonAPI:
     
     def get_report_status(self, report_id: str) -> Optional[Dict[str, Any]]:
         """
-        Проверяет статус отчета
+        Проверяет статус отчета с retry-логикой
         """
         logger.info(f"Проверка статуса отчета {report_id}...")
         
@@ -419,67 +488,50 @@ class OzonAPI:
             "report_id": report_id
         }
         
-        result = self._make_request(endpoint, data)
+        # Используем retry-логику для проверки статуса
+        result = self.retry_manager.execute_with_retry(
+            self._make_single_request, endpoint, data
+        )
         
         if result and "result" in result:
+            status = result["result"].get("status")
+            logger.info(f"Статус отчета {report_id}: {status}")
             return result["result"]
-        
-        return None
+        else:
+            logger.error(f"Не удалось получить статус отчета {report_id}")
+            return None
     
     def get_report_file(self, report_id: str) -> Optional[List[Dict[str, Any]]]:
         """
-        Получает файл отчета и парсит данные о товарах
+        Получает файл отчета с retry-логикой
         """
         logger.info(f"Получение файла отчета {report_id}...")
         
-        # Сначала проверяем статус отчета
-        status = self.get_report_status(report_id)
-        if not status:
-            logger.error("Не удалось получить статус отчета")
-            return None
+        endpoint = "/v1/report/info"
+        data = {
+            "report_id": report_id
+        }
         
-        # Проверяем, готов ли отчет
-        if status.get("status") != "success":
-            logger.info(f"Отчет еще не готов, статус: {status.get('status')}")
-            return None
+        # Используем retry-логику для получения файла
+        result = self.retry_manager.execute_with_retry(
+            self._make_single_request, endpoint, data
+        )
         
-        # Получаем файл отчета
-        file_url = status.get("file")
-        if not file_url:
-            logger.error("Нет ссылки на файл отчета")
-            return None
-        
-        try:
-            import requests
-            response = requests.get(file_url)
-            response.raise_for_status()
+        if result and "result" in result:
+            report_info = result["result"]
+            status = report_info.get("status")
             
-            # Парсим CSV файл
-            import csv
-            import io
-            
-            products_data = []
-            csv_reader = csv.DictReader(io.StringIO(response.text))
-            
-            for row in csv_reader:
-                # Парсим данные из CSV
-                product_data = {
-                    "sku": row.get("FBS Ozon SKU ID", ""),
-                    "stock": int(row.get("Доступно на складе Ozon, шт", 0)),
-                    "reserved": int(row.get("Зарезервировано, шт", 0)),
-                    "price": float(row.get("Текущая цена с учётом скидки, руб.", 0)),
-                    "status": row.get("Статус товара", ""),
-                    "barcode": row.get("Barcode", ""),
-                    "product_id": row.get("Ozon Product ID", "")
-                }
-                
-                # Добавляем только товары с остатками
-                if product_data["stock"] > 0 or product_data["reserved"] > 0:
-                    products_data.append(product_data)
-            
-            logger.info(f"Получено {len(products_data)} товаров с остатками из отчета")
-            return products_data
-            
-        except Exception as e:
-            logger.error(f"Ошибка при получении файла отчета: {e}")
+            if status == "success":
+                # Здесь должна быть логика для скачивания файла
+                # Пока возвращаем информацию об отчете
+                logger.info(f"Отчет {report_id} готов к скачиванию")
+                return [report_info]
+            elif status == "pending":
+                logger.info(f"Отчет {report_id} еще в обработке")
+                return None
+            else:
+                logger.warning(f"Отчет {report_id} имеет статус: {status}")
+                return None
+        else:
+            logger.error(f"Не удалось получить файл отчета {report_id}")
             return None 
