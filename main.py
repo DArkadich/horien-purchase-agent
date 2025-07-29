@@ -42,10 +42,10 @@ async def main():
         cache_manager = CacheManager()
         cached_api = CachedAPIClient(ozon_api, cache_manager)
         api_monitor = APIMonitor()
+        telegram = TelegramNotifier()
         monitoring_service = APIMonitoringService(ozon_api, api_monitor, telegram)
         metrics_collector = APIMetricsCollector()
         sheets = GoogleSheets()
-        telegram = TelegramNotifier()
         stock_tracker = StockTracker()
         
         # Очищаем истекший кэш
