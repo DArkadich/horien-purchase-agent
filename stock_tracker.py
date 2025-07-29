@@ -58,29 +58,39 @@ class StockTracker:
     
     def save_stock_data(self, stock_data: List[Dict[str, Any]]):
         """Сохраняет данные об остатках в базу данных"""
+        logger.info(f"Попытка сохранения {len(stock_data) if stock_data else 0} записей об остатках")
+        
         if not stock_data:
             logger.warning("Нет данных об остатках для сохранения")
             return
         
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        today = datetime.now().strftime("%Y-%m-%d")
-        
-        for item in stock_data:
-            cursor.execute('''
-                INSERT INTO stock_history (date, sku, stock, reserved)
-                VALUES (?, ?, ?, ?)
-            ''', (
-                today,
-                item.get("sku", ""),
-                item.get("stock", 0),
-                item.get("reserved", 0)
-            ))
-        
-        conn.commit()
-        conn.close()
-        logger.info(f"Сохранено {len(stock_data)} записей об остатках за {today}")
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            today = datetime.now().strftime("%Y-%m-%d")
+            logger.info(f"Сохраняем данные за дату: {today}")
+            
+            saved_count = 0
+            for item in stock_data:
+                sku = item.get("sku", "")
+                stock = item.get("stock", 0)
+                reserved = item.get("reserved", 0)
+                
+                cursor.execute('''
+                    INSERT INTO stock_history (date, sku, stock, reserved)
+                    VALUES (?, ?, ?, ?)
+                ''', (today, sku, stock, reserved))
+                saved_count += 1
+            
+            conn.commit()
+            conn.close()
+            logger.info(f"Успешно сохранено {saved_count} записей об остатках за {today}")
+            
+        except Exception as e:
+            logger.error(f"Ошибка сохранения данных об остатках: {e}")
+            if 'conn' in locals():
+                conn.close()
     
     def get_stock_history(self, sku: str, days: int = 30) -> List[Dict[str, Any]]:
         """Получает историю остатков для конкретного SKU"""
