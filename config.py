@@ -32,7 +32,7 @@ MINIMUM_ORDER_QUANTITIES = {
 
 # Настройки прогнозирования
 DAYS_FORECAST_SHORT = int(os.getenv('DAYS_FORECAST_SHORT', 30))
-DAYS_FORECAST_LONG = int(os.getenv('DAYS_FORECAST_LONG', 30))
+DAYS_FORECAST_LONG = int(os.getenv('DAYS_FORECAST_LONG', 45))
 # Настройки анализа продаж
 SALES_HISTORY_DAYS = int(os.getenv('SALES_HISTORY_DAYS', 180))
 
