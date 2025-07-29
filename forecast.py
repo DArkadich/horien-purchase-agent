@@ -71,15 +71,22 @@ class PurchaseForecast:
     
     def calculate_daily_sales(self, sales_df: pd.DataFrame) -> pd.DataFrame:
         """
-        Рассчитывает среднюю дневную продажу для каждого SKU
+        Рассчитывает среднюю дневную продажу для каждого SKU, исключая дни OOS
         """
-        logger.info("Расчет средней дневной продажи...")
+        logger.info("Расчет средней дневной продажи (исключая дни OOS)...")
         
         if sales_df.empty:
             return pd.DataFrame()
         
-        # Группируем по SKU и рассчитываем среднюю дневную продажу
-        daily_sales = sales_df.groupby('sku').agg({
+        # Фильтруем только дни с продажами (исключаем дни OOS)
+        sales_with_activity = sales_df[sales_df['quantity'] > 0].copy()
+        
+        if sales_with_activity.empty:
+            logger.warning("Нет данных о продажах (все дни OOS)")
+            return pd.DataFrame()
+        
+        # Группируем по SKU и рассчитываем среднюю дневную продажу только за дни с продажами
+        daily_sales = sales_with_activity.groupby('sku').agg({
             'quantity': 'sum',
             'date': 'nunique'
         }).reset_index()
@@ -90,14 +97,19 @@ class PurchaseForecast:
         # Убираем колонку с количеством уникальных дат
         daily_sales = daily_sales.drop('date', axis=1)
         
-        logger.info(f"Рассчитана средняя дневная продажа для {len(daily_sales)} SKU")
+        logger.info(f"Рассчитана средняя дневная продажа для {len(daily_sales)} SKU (исключая дни OOS)")
+        
+        # Логируем примеры для отладки
+        for _, row in daily_sales.head(3).iterrows():
+            logger.info(f"SKU {row['sku']}: {row['avg_daily_sales']:.2f} шт/день за {row['total_sales_days']} дней с продажами")
+        
         return daily_sales
     
     def identify_oos_days(self, sales_df: pd.DataFrame, stocks_df: pd.DataFrame) -> pd.DataFrame:
         """
-        Идентифицирует дни, когда товары были в OOS (out of stock)
+        Идентифицирует дни, когда товары были в OOS (out of stock) для информационных целей
         """
-        logger.info("Идентификация дней OOS...")
+        logger.info("Идентификация дней OOS для анализа...")
         
         if sales_df.empty or stocks_df.empty:
             return pd.DataFrame()
@@ -125,7 +137,19 @@ class PurchaseForecast:
         # Определяем дни OOS (когда продажи = 0)
         merged_df['is_oos'] = merged_df['quantity'] == 0
         
-        logger.info(f"Идентифицировано {merged_df['is_oos'].sum()} дней OOS")
+        # Подсчитываем статистику OOS для каждого SKU
+        oos_stats = merged_df.groupby('sku').agg({
+            'is_oos': 'sum',
+            'date': 'count'
+        }).reset_index()
+        
+        oos_stats['oos_percentage'] = (oos_stats['is_oos'] / oos_stats['date'] * 100).round(1)
+        
+        # Логируем статистику OOS
+        for _, row in oos_stats.head(5).iterrows():
+            logger.info(f"SKU {row['sku']}: {row['oos_percentage']}% дней OOS ({row['is_oos']} из {row['date']} дней)")
+        
+        logger.info(f"Идентифицировано {merged_df['is_oos'].sum()} дней OOS из {len(merged_df)} общих дней")
         return merged_df
     
     def calculate_forecast(self, sales_df: pd.DataFrame, stocks_df: pd.DataFrame) -> pd.DataFrame:
