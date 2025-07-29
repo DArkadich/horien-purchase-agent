@@ -190,6 +190,10 @@ class PurchaseForecast:
         # Фильтруем SKU, которые требуют закупки
         purchase_items = forecast_df[forecast_df['needs_purchase_short']].copy()
         
+        if purchase_items.empty:
+            logger.info("Нет товаров, требующих закупки")
+            return []
+        
         # Сортируем по приоритету (по убыванию срочности)
         purchase_items = purchase_items.sort_values('days_until_stockout', ascending=True)
         
