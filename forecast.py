@@ -69,7 +69,7 @@ class PurchaseForecast:
         logger.info(f"Подготовлено {len(stocks_by_sku)} записей об остатках")
         return stocks_by_sku
     
-    def calculate_daily_sales(self, sales_df: pd.DataFrame) -> pd.DataFrame:
+    def calculate_daily_sales(self, sales_df: pd.DataFrame, stocks_df: pd.DataFrame = None) -> pd.DataFrame:
         """
         Рассчитывает среднюю дневную продажу для каждого SKU, исключая дни OOS
         """
@@ -78,11 +78,29 @@ class PurchaseForecast:
         if sales_df.empty:
             return pd.DataFrame()
         
-        # Фильтруем только дни с продажами (исключаем дни OOS)
-        sales_with_activity = sales_df[sales_df['quantity'] > 0].copy()
+        # Если есть данные об остатках, используем их для точного определения OOS
+        if stocks_df is not None and not stocks_df.empty:
+            # Объединяем продажи с остатками по SKU
+            sales_with_stocks = sales_df.merge(stocks_df[['sku', 'available_stock']], on='sku', how='left')
+            
+            # Определяем дни OOS: когда остаток = 0 или отсутствует
+            sales_with_stocks['is_oos'] = (sales_with_stocks['available_stock'].isna() | 
+                                         (sales_with_stocks['available_stock'] == 0))
+            
+            # Фильтруем только дни с продажами И когда товар был в наличии
+            sales_with_activity = sales_with_stocks[
+                (sales_with_stocks['quantity'] > 0) & 
+                (~sales_with_stocks['is_oos'])
+            ].copy()
+            
+            logger.info(f"Используем данные об остатках для определения OOS дней")
+        else:
+            # Если нет данных об остатках, используем старую логику
+            sales_with_activity = sales_df[sales_df['quantity'] > 0].copy()
+            logger.info(f"Данные об остатках недоступны, используем только дни с продажами")
         
         if sales_with_activity.empty:
-            logger.warning("Нет данных о продажах (все дни OOS)")
+            logger.warning("Нет данных о продажах (все дни OOS или нет продаж)")
             return pd.DataFrame()
         
         # Группируем по SKU и рассчитываем среднюю дневную продажу только за дни с продажами
@@ -162,7 +180,7 @@ class PurchaseForecast:
             return pd.DataFrame()
         
         # Рассчитываем среднюю дневную продажу
-        daily_sales = self.calculate_daily_sales(sales_df)
+        daily_sales = self.calculate_daily_sales(sales_df, stocks_df)
         
         # Объединяем с остатками
         forecast_df = daily_sales.merge(stocks_df, on='sku', how='left')
