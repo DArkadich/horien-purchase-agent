@@ -75,16 +75,16 @@ async def main():
         else:
             logger.warning("Нет данных об остатках для сохранения")
         
-        # Получаем данные о продажах на основе истории остатков
-        logger.info("Получение данных о продажах на основе истории остатков...")
-        sales_data = stock_tracker.estimate_sales_from_stock_changes(days=180)
+        # Получаем данные о продажах из API
+        logger.info("Получение данных о продажах из API...")
+        sales_data = ozon_api.get_sales_data(days=180)
         
         if not sales_data:
-            logger.warning("Нет данных о продажах из истории остатков")
-            # Продолжаем работу без данных о продажах
-            sales_data = []
+            logger.warning("Нет данных о продажах из API, используем оценку из изменений остатков")
+            # Fallback: используем оценку из изменений остатков
+            sales_data = stock_tracker.estimate_sales_from_stock_changes(days=180)
         
-        logger.info(f"Получено {len(sales_data)} записей о продажах из истории остатков")
+        logger.info(f"Получено {len(sales_data)} записей о продажах")
         
         # Получаем данные об остатках
         logger.info("Получение данных об остатках...")

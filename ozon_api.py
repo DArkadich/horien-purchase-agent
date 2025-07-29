@@ -119,18 +119,42 @@ class OzonAPI:
     
     def get_sales_data(self, days: int = 180) -> List[Dict[str, Any]]:
         """
-        Получает данные о продажах за указанное количество дней
+        Получает данные о продажах за указанное количество дней через аналитический API
         """
-        logger.info(f"Получение данных о продажах за {days} дней...")
+        logger.info(f"Получение данных о продажах за {days} дней через аналитический API...")
         
-        products = self.get_products()
-        if not products:
-            logger.warning("Нет товаров для оценки продаж")
+        try:
+            # Получаем аналитические данные
+            analytics_data = self.get_analytics_data(days=min(days, 90))  # API ограничен 90 днями
+            
+            if not analytics_data:
+                logger.warning("Не удалось получить аналитические данные")
+                return []
+            
+            # Преобразуем аналитические данные в формат продаж
+            sales_data = []
+            for record in analytics_data:
+                # Проверяем наличие необходимых полей
+                if 'day' in record and 'sku' in record and 'orders' in record:
+                    sales_data.append({
+                        "sku": record['sku'],
+                        "date": record['day'],
+                        "quantity": record.get('orders', 0),  # Количество заказов как количество продаж
+                        "revenue": record.get('revenue', 0)
+                    })
+            
+            logger.info(f"Преобразовано {len(sales_data)} записей о продажах из аналитических данных")
+            
+            if sales_data:
+                # Логируем примеры для отладки
+                for i, sale in enumerate(sales_data[:3]):
+                    logger.info(f"Пример продажи {i+1}: SKU={sale['sku']}, Дата={sale['date']}, Количество={sale['quantity']}")
+            
+            return sales_data
+            
+        except Exception as e:
+            logger.error(f"Ошибка при получении данных о продажах: {e}")
             return []
-
-        # Пока нет реальных данных о продажах, возвращаем пустой список
-        logger.warning("Нет реальных данных о продажах из API")
-        return []
     
     def _generate_test_sales_data(self, days: int) -> List[Dict[str, Any]]:
         """
