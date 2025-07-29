@@ -84,13 +84,21 @@ class StockTracker:
                 saved_count += 1
             
             conn.commit()
+            logger.info(f"Транзакция зафиксирована в базе данных")
             conn.close()
             logger.info(f"Успешно сохранено {saved_count} записей об остатках за {today}")
             
         except Exception as e:
             logger.error(f"Ошибка сохранения данных об остатках: {e}")
+            logger.error(f"Тип ошибки: {type(e).__name__}")
+            import traceback
+            logger.error(f"Полный traceback: {traceback.format_exc()}")
             if 'conn' in locals():
-                conn.close()
+                try:
+                    conn.rollback()
+                    conn.close()
+                except:
+                    pass
     
     def get_stock_history(self, sku: str, days: int = 30) -> List[Dict[str, Any]]:
         """Получает историю остатков для конкретного SKU"""
