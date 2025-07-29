@@ -75,14 +75,14 @@ async def main():
         else:
             logger.warning("Нет данных об остатках для сохранения")
         
-        # Получение данных о продажах на основе истории остатков
+        # Получаем данные о продажах на основе истории остатков
         logger.info("Получение данных о продажах на основе истории остатков...")
         sales_data = stock_tracker.estimate_sales_from_stock_changes(days=180)
         
         if not sales_data:
             logger.warning("Нет данных о продажах из истории остатков")
-            await telegram.send_message("⚠️ Предупреждение: Нет данных о продажах для анализа")
-            return
+            # Продолжаем работу без данных о продажах
+            sales_data = []
         
         logger.info(f"Получено {len(sales_data)} записей о продажах из истории остатков")
         
@@ -100,14 +100,15 @@ async def main():
         # Подготовка данных для анализа
         logger.info("Подготовка данных для анализа...")
         
-        # Подготовка данных о продажах
+        # Подготовка данных о продажах (может быть пустым)
         logger.info("Подготовка данных о продажах...")
-        sales_df = pd.DataFrame(sales_data)
-        if not sales_df.empty:
+        if sales_data:
+            sales_df = pd.DataFrame(sales_data)
             logger.info(f"Подготовлено {len(sales_df)} записей о продажах")
         else:
-            logger.warning("Нет данных о продажах для анализа")
-            return
+            # Создаем пустой DataFrame для продаж
+            sales_df = pd.DataFrame()
+            logger.info("Нет данных о продажах, используем только остатки")
         
         # Подготовка данных об остатках
         logger.info("Подготовка данных об остатках...")
@@ -123,7 +124,8 @@ async def main():
         calculator = PurchaseForecast()
         
         # Подготавливаем данные
-        sales_df = calculator.prepare_sales_data(sales_data)
+        if not sales_df.empty:
+            sales_df = calculator.prepare_sales_data(sales_data)
         stocks_df = calculator.prepare_stocks_data(stocks_data)
         
         # Рассчитываем прогноз
