@@ -87,24 +87,22 @@ class PurchaseForecast:
             sales_with_stocks['is_oos'] = (sales_with_stocks['available_stock'].isna() | 
                                          (sales_with_stocks['available_stock'] == 0))
             
-            # Фильтруем только дни с продажами И когда товар был в наличии
-            sales_with_activity = sales_with_stocks[
-                (sales_with_stocks['quantity'] > 0) & 
-                (~sales_with_stocks['is_oos'])
-            ].copy()
+            # Фильтруем только дни когда товар был в наличии (исключаем дни OOS)
+            # Включаем все дни с наличием товара, даже если продаж не было
+            days_with_stock = sales_with_stocks[~sales_with_stocks['is_oos']].copy()
             
             logger.info(f"Используем данные об остатках для определения OOS дней")
         else:
             # Если нет данных об остатках, используем старую логику
-            sales_with_activity = sales_df[sales_df['quantity'] > 0].copy()
-            logger.info(f"Данные об остатках недоступны, используем только дни с продажами")
+            days_with_stock = sales_df.copy()
+            logger.info(f"Данные об остатках недоступны, используем все дни")
         
-        if sales_with_activity.empty:
-            logger.warning("Нет данных о продажах (все дни OOS или нет продаж)")
+        if days_with_stock.empty:
+            logger.warning("Нет данных о днях с наличием товара")
             return pd.DataFrame()
         
-        # Группируем по SKU и рассчитываем среднюю дневную продажу только за дни с продажами
-        daily_sales = sales_with_activity.groupby('sku').agg({
+        # Группируем по SKU и рассчитываем среднюю дневную продажу за дни с наличием товара
+        daily_sales = days_with_stock.groupby('sku').agg({
             'quantity': 'sum',
             'date': 'nunique'
         }).reset_index()
@@ -115,11 +113,11 @@ class PurchaseForecast:
         # Убираем колонку с количеством уникальных дат
         daily_sales = daily_sales.drop('date', axis=1)
         
-        logger.info(f"Рассчитана средняя дневная продажа для {len(daily_sales)} SKU (исключая дни OOS)")
+        logger.info(f"Рассчитана средняя дневная продажа для {len(daily_sales)} SKU (за дни с наличием товара)")
         
         # Логируем примеры для отладки
         for _, row in daily_sales.head(3).iterrows():
-            logger.info(f"SKU {row['sku']}: {row['avg_daily_sales']:.2f} шт/день за {row['total_sales_days']} дней с продажами")
+            logger.info(f"SKU {row['sku']}: {row['avg_daily_sales']:.2f} шт/день за {row['total_sales_days']} дней с наличием товара")
         
         return daily_sales
     
