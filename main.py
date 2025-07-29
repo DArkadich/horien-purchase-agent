@@ -157,9 +157,18 @@ async def main():
         sheets.create_summary_sheet(report_data)
         logger.info("Сводный лист создан")
         
+        # Подготовка сводных данных для Telegram
+        logger.info("Подготовка сводных данных...")
+        summary_data = {
+            'total_items': len(report_data),
+            'high_priority': len([item for item in report_data if item.get('urgency') == 'HIGH']),
+            'medium_priority': len([item for item in report_data if item.get('urgency') == 'MEDIUM']),
+            'low_priority': len([item for item in report_data if item.get('urgency') == 'LOW'])
+        }
+        
         # Отправка отчета в Telegram
         logger.info("Отправка отчета в Telegram...")
-        await telegram.send_purchase_report(report_data)
+        await telegram.send_purchase_report(report_data, summary_data)
         logger.info("Отчет о закупках отправлен в Telegram")
         
         # Отправка итогового уведомления
