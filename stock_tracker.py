@@ -133,6 +133,9 @@ class StockTracker:
             
             stock_history = cursor.fetchall()
             
+            if len(stock_history) < 2:
+                continue
+            
             # Анализируем изменения остатков
             for i in range(1, len(stock_history)):
                 prev_date, prev_stock = stock_history[i-1]
@@ -151,6 +154,15 @@ class StockTracker:
                         "quantity": sold_quantity,
                         "revenue": revenue
                     })
+                elif prev_stock == curr_stock and curr_stock > 0:
+                    # Если остатки не изменились и товар был в наличии - это день без продаж
+                    sales_data.append({
+                        "sku": sku,
+                        "date": curr_date,
+                        "quantity": 0,
+                        "revenue": 0
+                    })
+                # Если остатки увеличились - это пополнение, не учитываем как продажи
         
         conn.close()
         logger.info(f"Оценено {len(sales_data)} записей о продажах на основе изменений остатков")

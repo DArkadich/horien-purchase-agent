@@ -170,20 +170,32 @@ class PurchaseForecast:
     
     def calculate_forecast(self, sales_df: pd.DataFrame, stocks_df: pd.DataFrame) -> pd.DataFrame:
         """
-        Рассчитывает прогноз закупок для каждого SKU на основе остатков
+        Рассчитывает прогноз закупок для каждого SKU
         """
-        logger.info("Расчет прогноза закупок на основе остатков...")
+        logger.info("Расчет прогноза закупок...")
         
         if stocks_df.empty:
             return pd.DataFrame()
         
-        # Создаем базовый прогноз на основе остатков
-        forecast_df = stocks_df.copy()
-        
-        # Устанавливаем базовую среднюю продажу (можно настроить)
-        base_daily_sales = 1.0  # 1 шт в день по умолчанию
-        
-        forecast_df['avg_daily_sales'] = base_daily_sales
+        # Если есть данные о продажах, используем их для расчета средней продажи
+        if not sales_df.empty:
+            # Рассчитываем среднюю дневную продажу из данных о продажах
+            daily_sales = self.calculate_daily_sales(sales_df, stocks_df)
+            
+            if not daily_sales.empty:
+                # Объединяем с остатками
+                forecast_df = daily_sales.merge(stocks_df, on='sku', how='left')
+                logger.info("Используем данные о продажах для расчета средней продажи")
+            else:
+                # Если нет данных о продажах, используем базовую логику
+                forecast_df = stocks_df.copy()
+                forecast_df['avg_daily_sales'] = 1.0  # 1 шт в день по умолчанию
+                logger.info("Нет данных о продажах, используем базовую продажу 1 шт/день")
+        else:
+            # Если нет данных о продажах, используем базовую логику
+            forecast_df = stocks_df.copy()
+            forecast_df['avg_daily_sales'] = 1.0  # 1 шт в день по умолчанию
+            logger.info("Нет данных о продажах, используем базовую продажу 1 шт/день")
         
         # Рассчитываем, на сколько дней хватит текущего запаса
         forecast_df['days_until_stockout'] = np.where(
@@ -217,7 +229,7 @@ class PurchaseForecast:
         # Округляем до целых чисел
         forecast_df['final_order_quantity'] = forecast_df['final_order_quantity'].round().astype(int)
         
-        logger.info(f"Рассчитан прогноз для {len(forecast_df)} SKU на основе остатков")
+        logger.info(f"Рассчитан прогноз для {len(forecast_df)} SKU")
         return forecast_df
     
     def generate_purchase_report(self, forecast_df: pd.DataFrame) -> List[Dict[str, Any]]:
