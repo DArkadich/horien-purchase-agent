@@ -4,7 +4,7 @@
 
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from enum import Enum
 
 # ============================================================================
@@ -144,102 +144,210 @@ class SeasonalityData(BaseModel):
     peak_month: Dict[str, Any] = Field(..., description="Пиковый месяц")
 
 # ============================================================================
-# Notification Models
+# Модели для Notification Service
 # ============================================================================
 
 class NotificationRequest(BaseModel):
     """Запрос на отправку уведомления"""
-    type: NotificationType = Field(..., description="Тип уведомления")
-    title: str = Field(..., description="Заголовок")
-    message: str = Field(..., description="Сообщение")
-    recipients: List[str] = Field(..., description="Получатели")
-    data: Optional[Dict[str, Any]] = Field(None, description="Дополнительные данные")
+    notification_type: str
+    message: str = None
+    template_name: str = None
+    template_data: Dict[str, Any] = {}
 
-class NotificationResponse(BaseResponse):
+class NotificationResponse(BaseModel):
     """Ответ на отправку уведомления"""
-    notification_id: str = Field(..., description="ID уведомления")
-    sent_at: datetime = Field(..., description="Время отправки")
-    recipients_count: int = Field(..., description="Количество получателей")
+    success: bool
+    message: str
+    notification_id: str = None
 
-class NotificationHistory(BaseResponse):
+class NotificationHistory(BaseModel):
     """История уведомлений"""
-    notifications: List[Dict[str, Any]] = Field(..., description="Список уведомлений")
-    total: int = Field(..., description="Общее количество")
+    success: bool
+    notifications: List[Dict[str, Any]]
+    total_count: int
+
+class SubscriptionRequest(BaseModel):
+    """Запрос на подписку"""
+    user_id: str
+    notification_types: List[str]
+
+class SubscriptionResponse(BaseModel):
+    """Ответ на подписку"""
+    success: bool
+    message: str
+
+class TemplateRequest(BaseModel):
+    """Запрос на создание шаблона"""
+    name: str
+    title: str
+    template: str
 
 # ============================================================================
-# Monitoring Models
+# Модели для Monitoring Service
 # ============================================================================
 
 class HealthCheck(BaseModel):
     """Проверка здоровья сервиса"""
-    service: str = Field(..., description="Название сервиса")
-    status: str = Field(..., description="Статус")
-    timestamp: datetime = Field(..., description="Временная метка")
-    response_time: Optional[float] = Field(None, description="Время отклика")
-    details: Optional[Dict[str, Any]] = Field(None, description="Детали")
+    service: str
+    status: str
+    response_time: float = None
+    details: Dict[str, Any] = {}
+    timestamp: str
 
 class MetricsData(BaseModel):
-    """Метрики сервиса"""
-    service: str = Field(..., description="Название сервиса")
-    metrics: Dict[str, Any] = Field(..., description="Метрики")
-    timestamp: datetime = Field(..., description="Временная метка")
+    """Данные метрик"""
+    system: Dict[str, Any] = {}
+    api: Dict[str, Any] = {}
+    timestamp: str
 
-class Alert(BaseModel):
-    """Алерт"""
-    id: str = Field(..., description="ID алерта")
-    service: str = Field(..., description="Сервис")
-    severity: str = Field(..., description="Важность")
-    message: str = Field(..., description="Сообщение")
-    timestamp: datetime = Field(..., description="Временная метка")
-    resolved: bool = Field(default=False, description="Разрешен")
+class AlertData(BaseModel):
+    """Данные алерта"""
+    type: str
+    severity: str
+    message: str
+    details: Dict[str, Any] = {}
+    timestamp: str
+
+class DashboardData(BaseModel):
+    """Данные для дашборда"""
+    overview: Dict[str, Any] = {}
+    alerts: Dict[str, Any] = {}
+    system: Dict[str, Any] = {}
+    services: List[Dict[str, Any]] = []
+    recent_alerts: List[Dict[str, Any]] = []
+    timestamp: str
 
 # ============================================================================
-# Storage Models
+# Модели для Storage Service
 # ============================================================================
 
-class FileUpload(BaseModel):
-    """Загрузка файла"""
-    filename: str = Field(..., description="Имя файла")
-    content_type: str = Field(..., description="Тип содержимого")
-    size: int = Field(..., description="Размер файла")
-    data: bytes = Field(..., description="Данные файла")
+class ExportRequest(BaseModel):
+    """Запрос на экспорт данных"""
+    data: List[Dict[str, Any]]
+    format: str = "csv"  # csv, json, excel
+
+class ExportResponse(BaseModel):
+    """Ответ на экспорт данных"""
+    success: bool
+    filepath: str = None
+    format: str = None
+    records_count: int = 0
+
+class BackupRequest(BaseModel):
+    """Запрос на создание резервной копии"""
+    data: Dict[str, Any]
+    backup_type: str = "manual"
+
+class BackupResponse(BaseModel):
+    """Ответ на создание резервной копии"""
+    success: bool
+    filepath: str = None
+    backup_type: str = None
 
 class FileInfo(BaseModel):
     """Информация о файле"""
-    id: str = Field(..., description="ID файла")
-    filename: str = Field(..., description="Имя файла")
-    content_type: str = Field(..., description="Тип содержимого")
-    size: int = Field(..., description="Размер файла")
-    created_at: datetime = Field(..., description="Дата создания")
-    url: Optional[str] = Field(None, description="URL для скачивания")
+    filename: str
+    filepath: str
+    size: int
+    created_at: str
+    modified_at: str
+    extension: str
 
-class SheetsUpdate(BaseModel):
-    """Обновление Google Sheets"""
-    spreadsheet_id: str = Field(..., description="ID таблицы")
-    sheet_name: str = Field(..., description="Название листа")
-    data: List[List[Any]] = Field(..., description="Данные для записи")
-    range: Optional[str] = Field(None, description="Диапазон")
+class StorageStats(BaseModel):
+    """Статистика хранилища"""
+    files: Dict[str, Any] = {}
+    backups: Dict[str, Any] = {}
+    storage: Dict[str, Any] = {}
 
 # ============================================================================
-# API Models
+# Enums для статусов и уровней
 # ============================================================================
 
-class APIMetrics(BaseModel):
-    """Метрики API"""
-    endpoint: str = Field(..., description="Эндпоинт")
-    method: str = Field(..., description="HTTP метод")
-    response_time: float = Field(..., description="Время отклика (мс)")
-    status_code: int = Field(..., description="HTTP статус код")
-    timestamp: datetime = Field(..., description="Временная метка")
-    user_agent: Optional[str] = Field(None, description="User Agent")
-    ip_address: Optional[str] = Field(None, description="IP адрес")
+class ServiceStatus(str, Enum):
+    """Статусы сервисов"""
+    HEALTHY = "healthy"
+    UNHEALTHY = "unhealthy"
+    DEGRADED = "degraded"
+    CRITICAL = "critical"
+    TIMEOUT = "timeout"
+    UNREACHABLE = "unreachable"
+    ERROR = "error"
 
-class APIHealth(BaseModel):
-    """Здоровье API"""
-    service: str = Field(..., description="Название сервиса")
-    status: str = Field(..., description="Статус")
-    version: str = Field(..., description="Версия")
-    uptime: float = Field(..., description="Время работы (сек)")
-    memory_usage: Optional[float] = Field(None, description="Использование памяти (%)")
-    cpu_usage: Optional[float] = Field(None, description="Использование CPU (%)")
-    active_connections: Optional[int] = Field(None, description="Активные соединения") 
+class AlertSeverity(str, Enum):
+    """Уровни серьезности алертов"""
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+
+class NotificationType(str, Enum):
+    """Типы уведомлений"""
+    FORECAST_ALERT = "forecast_alert"
+    STOCK_ALERT = "stock_alert"
+    SYSTEM_ALERT = "system_alert"
+    ERROR_ALERT = "error_alert"
+    SYNC_COMPLETED = "sync_completed"
+
+class ExportFormat(str, Enum):
+    """Форматы экспорта"""
+    CSV = "csv"
+    JSON = "json"
+    EXCEL = "excel"
+
+class BackupType(str, Enum):
+    """Типы резервных копий"""
+    MANUAL = "manual"
+    AUTOMATIC = "automatic"
+    SCHEDULED = "scheduled"
+
+# ============================================================================
+# Модели для общих ответов
+# ============================================================================
+
+class BaseResponse(BaseModel):
+    """Базовый ответ API"""
+    success: bool
+    message: str = None
+    timestamp: str = None
+
+    @validator('timestamp', pre=True, always=True)
+    def set_timestamp(cls, v):
+        return v or datetime.now().isoformat()
+
+class ErrorResponse(BaseModel):
+    """Ответ с ошибкой"""
+    success: bool = False
+    error_code: str = None
+    message: str
+    details: Dict[str, Any] = {}
+    timestamp: str = None
+
+    @validator('timestamp', pre=True, always=True)
+    def set_timestamp(cls, v):
+        return v or datetime.now().isoformat()
+
+# ============================================================================
+# Модели для событий
+# ============================================================================
+
+class EventData(BaseModel):
+    """Данные события"""
+    event_type: str
+    service: str
+    data: Dict[str, Any]
+    timestamp: str = None
+
+    @validator('timestamp', pre=True, always=True)
+    def set_timestamp(cls, v):
+        return v or datetime.now().isoformat()
+
+class QueueMessage(BaseModel):
+    """Сообщение в очереди"""
+    queue: str
+    message: Dict[str, Any]
+    priority: int = 0
+    timestamp: str = None
+
+    @validator('timestamp', pre=True, always=True)
+    def set_timestamp(cls, v):
+        return v or datetime.now().isoformat() 
