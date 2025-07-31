@@ -133,10 +133,18 @@ class StockTracker:
         cursor = conn.cursor()
         
         start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+        logger.info(f"Запрашиваем данные об остатках с {start_date} (за {days} дней)")
         
         # Получаем все уникальные SKU
         cursor.execute('SELECT DISTINCT sku FROM stock_history WHERE date >= ?', (start_date,))
         skus = [row[0] for row in cursor.fetchall()]
+        
+        logger.info(f"Найдено {len(skus)} SKU с данными с {start_date}")
+        
+        # Проверяем, какие даты есть в БД
+        cursor.execute('SELECT DISTINCT date FROM stock_history ORDER BY date')
+        available_dates = [row[0] for row in cursor.fetchall()]
+        logger.info(f"Доступные даты в БД: {available_dates}")
         
         sales_data = []
         
@@ -197,6 +205,18 @@ class StockTracker:
         
         conn.close()
         logger.info(f"Оценено {len(sales_data)} записей о продажах на основе изменений остатков")
+        
+        # Отладочная информация о найденных продажах
+        if sales_data:
+            unique_dates = set(record['date'] for record in sales_data)
+            unique_skus = set(record['sku'] for record in sales_data)
+            total_quantity = sum(record['quantity'] for record in sales_data)
+            logger.info(f"Найдены продажи за даты: {sorted(unique_dates)}")
+            logger.info(f"SKU с продажами: {len(unique_skus)}")
+            logger.info(f"Общее количество проданных единиц: {total_quantity}")
+        else:
+            logger.warning("Не найдено изменений остатков для оценки продаж")
+        
         return sales_data
     
 
