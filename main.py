@@ -109,13 +109,13 @@ async def main():
         
         # Получаем данные о продажах из API с кэшированием
         logger.info("Получение данных о продажах из API...")
-        from config import DAYS_TO_ANALYZE
-        sales_data = cached_api.get_sales_data_with_cache(days=DAYS_TO_ANALYZE)
+        from config import SALES_HISTORY_DAYS
+        sales_data = cached_api.get_sales_data_with_cache(days=SALES_HISTORY_DAYS)
         
         if not sales_data:
             logger.warning("Нет данных о продажах из API, используем оценку из изменений остатков")
             # Fallback: используем оценку из изменений остатков
-            sales_data = stock_tracker.estimate_sales_from_stock_changes(days=DAYS_TO_ANALYZE)
+            sales_data = stock_tracker.estimate_sales_from_stock_changes(days=SALES_HISTORY_DAYS)
         
         logger.info(f"Получено {len(sales_data)} записей о продажах")
         
