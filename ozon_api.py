@@ -402,6 +402,8 @@ class OzonAPI:
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
         
+        logger.info(f"Запрашиваем данные с {start_date.strftime('%Y-%m-%d')} по {end_date.strftime('%Y-%m-%d')}")
+        
         endpoint = "/v1/analytics/data"
         data = {
             "date_from": start_date.strftime("%Y-%m-%d"),
@@ -413,6 +415,8 @@ class OzonAPI:
             "limit": 1000,
             "offset": 0
         }
+        
+        logger.info(f"Отправляем запрос к {endpoint} с параметрами: {data}")
         
         analytics_data = []
         offset = 0
@@ -446,6 +450,17 @@ class OzonAPI:
                 time.sleep(0.5)
         
         logger.info(f"Получено {len(analytics_data)} записей аналитических данных за {page + 1} страниц")
+        
+        # Отладочная информация о полученных данных
+        if analytics_data:
+            unique_dates = set(record.get('day', '') for record in analytics_data)
+            unique_skus = set(record.get('sku', '') for record in analytics_data)
+            logger.info(f"Уникальные даты в данных: {sorted(unique_dates)}")
+            logger.info(f"Количество уникальных SKU: {len(unique_skus)}")
+            logger.info(f"Примеры записей: {analytics_data[:3]}")
+        else:
+            logger.warning("API вернул пустые данные")
+        
         return analytics_data
 
     def create_products_report(self) -> Optional[str]:
