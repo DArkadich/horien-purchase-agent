@@ -132,19 +132,33 @@ class StockTracker:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
-        logger.info(f"Запрашиваем данные об остатках с {start_date} (за {days} дней)")
-        
-        # Получаем все уникальные SKU
-        cursor.execute('SELECT DISTINCT sku FROM stock_history WHERE date >= ?', (start_date,))
-        skus = [row[0] for row in cursor.fetchall()]
-        
-        logger.info(f"Найдено {len(skus)} SKU с данными с {start_date}")
-        
         # Проверяем, какие даты есть в БД
         cursor.execute('SELECT DISTINCT date FROM stock_history ORDER BY date')
         available_dates = [row[0] for row in cursor.fetchall()]
         logger.info(f"Доступные даты в БД: {available_dates}")
+        
+        if not available_dates:
+            logger.warning("В БД нет данных об остатках")
+            conn.close()
+            return []
+        
+        # Fallback логика: используем все доступные данные
+        start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+        logger.info(f"Запрашиваем данные об остатках с {start_date} (за {days} дней)")
+        
+        # Получаем все уникальные SKU с запрашиваемой даты
+        cursor.execute('SELECT DISTINCT sku FROM stock_history WHERE date >= ?', (start_date,))
+        skus = [row[0] for row in cursor.fetchall()]
+        
+        # Если нет данных за запрашиваемый период, используем все доступные данные
+        if not skus:
+            logger.warning(f"Нет данных с {start_date}, используем все доступные данные")
+            cursor.execute('SELECT DISTINCT sku FROM stock_history')
+            skus = [row[0] for row in cursor.fetchall()]
+            start_date = available_dates[0]  # Используем самую раннюю доступную дату
+        
+        logger.info(f"Найдено {len(skus)} SKU с данными с {start_date}")
+        logger.info(f"Используем данные с {start_date} по {available_dates[-1]}")
         
         sales_data = []
         

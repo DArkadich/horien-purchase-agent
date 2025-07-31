@@ -116,6 +116,15 @@ async def main():
             logger.warning("Нет данных о продажах из API, используем оценку из изменений остатков")
             # Fallback: используем оценку из изменений остатков
             sales_data = stock_tracker.estimate_sales_from_stock_changes(days=SALES_HISTORY_DAYS)
+            
+            # Если все еще нет данных, пробуем с меньшим периодом
+            if not sales_data:
+                logger.warning("Нет данных за 180 дней, пробуем с доступными данными")
+                sales_data = stock_tracker.estimate_sales_from_stock_changes(days=30)  # Пробуем 30 дней
+                
+                if not sales_data:
+                    logger.warning("Нет данных за 30 дней, используем все доступные данные")
+                    sales_data = stock_tracker.estimate_sales_from_stock_changes(days=1)  # Используем все данные
         
         logger.info(f"Получено {len(sales_data)} записей о продажах")
         
