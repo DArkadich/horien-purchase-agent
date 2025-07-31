@@ -41,6 +41,8 @@ OZON_CLIENT_ID = os.getenv('OZON_CLIENT_ID')
 OZON_API_KEY = os.getenv('OZON_API_KEY')
 OZON_BASE_URL = os.getenv('OZON_BASE_URL', 'https://api-seller.ozon.ru')
 
+
+
 # Настройки retry-логики для API
 API_MAX_RETRIES = int(os.getenv('API_MAX_RETRIES', 3))
 API_BASE_DELAY = float(os.getenv('API_BASE_DELAY', 2.0))
