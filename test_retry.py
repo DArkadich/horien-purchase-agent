@@ -92,7 +92,7 @@ def test_api_with_retry():
     
     # Тест получения аналитических данных
     print("Тестирование получения аналитических данных...")
-    analytics = api.get_analytics_data(days=7)  # Только за неделю для теста
+    analytics = api.get_analytics_data(days=2)  # Только за 2 дня для теста
     
     if analytics:
         print(f"✅ Получено аналитических записей: {len(analytics)}")

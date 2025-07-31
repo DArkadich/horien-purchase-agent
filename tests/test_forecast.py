@@ -7,6 +7,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
 from forecast import PurchaseForecast, DataValidator
+from config import DAYS_TO_ANALYZE
 import os
 
 class TestDataValidator:

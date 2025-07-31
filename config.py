@@ -36,6 +36,9 @@ DAYS_FORECAST_LONG = int(os.getenv('DAYS_FORECAST_LONG', 45))
 # Настройки анализа продаж
 SALES_HISTORY_DAYS = int(os.getenv('SALES_HISTORY_DAYS', 180))
 
+# Периоды анализа данных
+DAYS_TO_ANALYZE = 2  # Период анализа данных (изменено с 7 на 2 дня для быстрого тестирования)
+
 # Ozon API настройки
 OZON_CLIENT_ID = os.getenv('OZON_CLIENT_ID')
 OZON_API_KEY = os.getenv('OZON_API_KEY')

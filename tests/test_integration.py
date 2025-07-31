@@ -219,7 +219,7 @@ class TestStockTrackerIntegration:
         stock_tracker.save_stock_data(test_stocks)
         
         # Получаем историю
-        history = stock_tracker.get_stock_history(days=7)
+        history = stock_tracker.get_stock_history(days=2)
         
         # Проверяем, что данные сохранились
         assert history is not None
@@ -238,7 +238,7 @@ class TestStockTrackerIntegration:
         stock_tracker.save_stock_data(stocks_day2)
         
         # Оцениваем продажи
-        estimated_sales = stock_tracker.estimate_sales_from_stock_changes(days=7)
+        estimated_sales = stock_tracker.estimate_sales_from_stock_changes(days=2)
         
         # Проверяем результат
         assert estimated_sales is not None

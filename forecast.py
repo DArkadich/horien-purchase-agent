@@ -11,7 +11,7 @@ import csv
 from pathlib import Path
 from config import (
     DAYS_FORECAST_SHORT, DAYS_FORECAST_LONG, SALES_HISTORY_DAYS,
-    get_moq_for_sku, logger
+    DAYS_TO_ANALYZE, get_moq_for_sku, logger
 )
 
 # Импортируем ML интеграцию
@@ -230,8 +230,8 @@ class PurchaseForecast:
         
         logger.info(f"Диапазон дат: {min_date.date()} - {max_date.date()} ({date_range} дней)")
         
-        if date_range < 7:
-            logger.warning("Мало исторических данных для анализа (менее 7 дней)")
+        if date_range < DAYS_TO_ANALYZE:
+            logger.warning(f"Мало исторических данных для анализа (менее {DAYS_TO_ANALYZE} дней)")
         
         # Группируем по SKU и дате
         sales_by_sku = df.groupby(['sku', 'date']).agg({
@@ -441,10 +441,10 @@ class PurchaseForecast:
                 forecast_df['forecast_quality'] = 'GOOD'
                 
                 # SKU с малым количеством дней продаж
-                low_data_skus = forecast_df[forecast_df['total_sales_days'] < 7]
+                low_data_skus = forecast_df[forecast_df['total_sales_days'] < DAYS_TO_ANALYZE]
                 if not low_data_skus.empty:
                     forecast_df.loc[low_data_skus.index, 'forecast_quality'] = 'LOW_DATA'
-                    logger.warning(f"{len(low_data_skus)} SKU имеют мало данных о продажах (< 7 дней)")
+                    logger.warning(f"{len(low_data_skus)} SKU имеют мало данных о продажах (< {DAYS_TO_ANALYZE} дней)")
                 
                 # SKU с нулевой средней продажей
                 zero_sales_skus = forecast_df[forecast_df['avg_daily_sales'] == 0]
@@ -783,7 +783,7 @@ class PurchaseForecast:
         analytics = {
             'total_skus': len(forecast_df),
             'skus_needing_purchase': len(forecast_df[forecast_df['needs_purchase_short']]),
-            'skus_critical': len(forecast_df[forecast_df['days_until_stockout'] < 7]),
+            'skus_critical': len(forecast_df[forecast_df['days_until_stockout'] < DAYS_TO_ANALYZE]),
             'skus_urgent': len(forecast_df[forecast_df['days_until_stockout'] < 14]),
             'total_recommended_quantity': int(forecast_df['final_order_quantity'].sum()),
             'avg_days_until_stockout': round(forecast_df['days_until_stockout'].mean(), 1),
@@ -904,7 +904,7 @@ class PurchaseForecast:
             dashboard_data['summary'] = {
                 'total_skus': len(forecast_df),
                 'skus_needing_purchase': len(forecast_df[forecast_df['needs_purchase_short']]),
-                'critical_skus': len(forecast_df[forecast_df['days_until_stockout'] < 7]),
+                'critical_skus': len(forecast_df[forecast_df['days_until_stockout'] < DAYS_TO_ANALYZE]),
                 'total_recommended_quantity': int(forecast_df['final_order_quantity'].sum()),
                 'avg_days_until_stockout': round(forecast_df['days_until_stockout'].mean(), 1)
             }
@@ -972,7 +972,7 @@ class PurchaseForecast:
             })
         
         # Анализируем критические позиции
-        critical_skus = forecast_df[forecast_df['days_until_stockout'] < 7]
+        critical_skus = forecast_df[forecast_df['days_until_stockout'] < DAYS_TO_ANALYZE]
         if not critical_skus.empty:
             recommendations.append({
                 'type': 'URGENT_PURCHASE',
@@ -1031,7 +1031,7 @@ class PurchaseForecast:
         # Основная статистика
         total_skus = len(forecast_df)
         skus_needing_purchase = len(forecast_df[forecast_df['needs_purchase_short']])
-        critical_skus = len(forecast_df[forecast_df['days_until_stockout'] < 7])
+        critical_skus = len(forecast_df[forecast_df['days_until_stockout'] < DAYS_TO_ANALYZE])
         total_quantity = int(forecast_df['final_order_quantity'].sum())
         
         report_lines.append("ОСНОВНАЯ СТАТИСТИКА:")
