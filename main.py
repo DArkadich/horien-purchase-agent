@@ -112,6 +112,8 @@ async def main():
         from config import SALES_HISTORY_DAYS
         sales_data = cached_api.get_sales_data_with_cache(days=SALES_HISTORY_DAYS)
         
+        logger.info(f"API вернул {len(sales_data) if sales_data else 0} записей о продажах")
+        
         if not sales_data:
             logger.warning("Нет данных о продажах из API, используем оценку из изменений остатков")
             # Fallback: используем оценку из изменений остатков
@@ -125,8 +127,29 @@ async def main():
                 if not sales_data:
                     logger.warning("Нет данных за 30 дней, используем все доступные данные")
                     sales_data = stock_tracker.estimate_sales_from_stock_changes(days=1)  # Используем все данные
+        else:
+            logger.info("Используем данные о продажах из API")
+            # Добавляем отладочную информацию о данных из API
+            if sales_data:
+                unique_dates = set(record.get('date', '') for record in sales_data)
+                unique_skus = set(record.get('sku', '') for record in sales_data)
+                total_quantity = sum(record.get('quantity', 0) for record in sales_data)
+                logger.info(f"Данные из API: даты {sorted(unique_dates)}, SKU {len(unique_skus)}, общее количество {total_quantity}")
+                logger.info(f"Примеры данных из API: {sales_data[:3]}")
         
         logger.info(f"Получено {len(sales_data)} записей о продажах")
+        
+        # Для тестирования: принудительно используем StockTracker
+        logger.info("=== ТЕСТИРОВАНИЕ: Принудительно используем StockTracker ===")
+        test_sales_data = stock_tracker.estimate_sales_from_stock_changes(days=1)
+        logger.info(f"StockTracker вернул {len(test_sales_data) if test_sales_data else 0} записей")
+        if test_sales_data:
+            unique_dates = set(record.get('date', '') for record in test_sales_data)
+            unique_skus = set(record.get('sku', '') for record in test_sales_data)
+            total_quantity = sum(record.get('quantity', 0) for record in test_sales_data)
+            logger.info(f"StockTracker данные: даты {sorted(unique_dates)}, SKU {len(unique_skus)}, общее количество {total_quantity}")
+            logger.info(f"Примеры данных StockTracker: {test_sales_data[:3]}")
+        logger.info("=== КОНЕЦ ТЕСТИРОВАНИЯ ===")
         
         # Получаем данные об остатках
         logger.info("Получение данных об остатках...")
