@@ -159,6 +159,7 @@ class StockTracker:
         
         logger.info(f"Найдено {len(skus)} SKU с данными с {start_date}")
         logger.info(f"Используем данные с {start_date} по {available_dates[-1]}")
+        logger.info(f"Список SKU для анализа: {skus[:5]}...")  # Показываем первые 5 SKU
         
         sales_data = []
         
@@ -173,13 +174,21 @@ class StockTracker:
             
             stock_history = cursor.fetchall()
             
+            logger.info(f"Анализ SKU {sku}: найдено {len(stock_history)} записей об остатках")
+            
             if len(stock_history) < 2:
+                logger.info(f"SKU {sku}: недостаточно данных для анализа (нужно минимум 2 записи)")
                 continue
+            
+            # Показываем историю остатков для отладки
+            logger.info(f"SKU {sku} история остатков: {stock_history}")
             
             # Анализируем изменения остатков
             for i in range(1, len(stock_history)):
                 prev_date, prev_stock = stock_history[i-1]
                 curr_date, curr_stock = stock_history[i]
+                
+                logger.info(f"SKU {sku}: {prev_date}({prev_stock}) -> {curr_date}({curr_stock})")
                 
                 # Если остатки уменьшились - это продажи
                 if prev_stock > curr_stock:
@@ -194,7 +203,7 @@ class StockTracker:
                         "quantity": sold_quantity,
                         "revenue": revenue
                     })
-                    logger.debug(f"Продажа {sku}: {sold_quantity} шт. ({prev_stock} -> {curr_stock})")
+                    logger.info(f"ПРОДАЖА {sku}: {sold_quantity} шт. ({prev_stock} -> {curr_stock}) на дату {curr_date}")
                 
                 # Если остатки не изменились и товар был в наличии - это день без продаж
                 elif prev_stock == curr_stock and curr_stock > 0:
@@ -204,17 +213,17 @@ class StockTracker:
                         "quantity": 0,
                         "revenue": 0
                     })
-                    logger.debug(f"День без продаж {sku}: {curr_stock} шт.")
+                    logger.info(f"День без продаж {sku}: {curr_stock} шт. на дату {curr_date}")
                 
                 # Если остатки увеличились - это поставка, НЕ учитываем как продажи
                 elif prev_stock < curr_stock:
                     supplied_quantity = curr_stock - prev_stock
-                    logger.info(f"Поставка {sku}: +{supplied_quantity} шт. ({prev_stock} -> {curr_stock})")
+                    logger.info(f"Поставка {sku}: +{supplied_quantity} шт. ({prev_stock} -> {curr_stock}) на дату {curr_date}")
                     # НЕ добавляем в sales_data - поставки не являются продажами
                 
                 # Если остатки не изменились и товар отсутствует - это день без остатков
                 elif prev_stock == curr_stock and curr_stock == 0:
-                    logger.debug(f"День без остатков {sku}: 0 шт.")
+                    logger.info(f"День без остатков {sku}: 0 шт. на дату {curr_date}")
                     # НЕ добавляем в sales_data - нет товара для продажи
         
         conn.close()
@@ -228,6 +237,7 @@ class StockTracker:
             logger.info(f"Найдены продажи за даты: {sorted(unique_dates)}")
             logger.info(f"SKU с продажами: {len(unique_skus)}")
             logger.info(f"Общее количество проданных единиц: {total_quantity}")
+            logger.info(f"Примеры записей о продажах: {sales_data[:3]}")
         else:
             logger.warning("Не найдено изменений остатков для оценки продаж")
         
