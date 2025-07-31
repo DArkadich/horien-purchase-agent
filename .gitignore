@@ -58,4 +58,8 @@ Thumbs.db
 
 # Temporary files
 *.tmp
-*.temp 
+*.temp
+
+# Database files (ML data)
+data/*.db
+*.db 
