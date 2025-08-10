@@ -10,4 +10,10 @@ services:
     restart: unless-stopped
     environment:
       - TZ=Europe/Moscow
-      - ML_SERVICE_URL=http://host.docker.internal:8006
+      - ML_SERVICE_URL=http://ml-service:8006
+    networks:
+      - microservices_ozon-network
+
+networks:
+  microservices_ozon-network:
+    external: true
