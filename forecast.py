@@ -1131,4 +1131,40 @@ class PurchaseForecast:
             return ml_integration.generate_ml_forecast_report(sales_data, stocks_data)
         except Exception as e:
             logger.error(f"Ошибка генерации ML-отчета: {e}")
-            return {'error': str(e)} 
+            return {'error': str(e)}
+    
+    def should_use_ml_forecast(self, sales_data: List[Dict[str, Any]]) -> bool:
+        """
+        Определяет, стоит ли использовать ML-прогноз
+        """
+        try:
+            if not ML_AVAILABLE:
+                return False
+
+            if not sales_data:
+                return False
+
+            # Минимальные требования для ускоренного запуска ML: данные хотя бы за DAYS_TO_ANALYZE дней,
+            # минимум один SKU и минимум 2 записи
+            unique_skus = {str(record.get('sku', '')) for record in sales_data if record.get('sku')}
+            if len(unique_skus) < 1:
+                logger.info("Недостаточно SKU для ML-прогноза (< 1 SKU)")
+                return False
+
+            dates = [pd.to_datetime(record.get('date', '')) for record in sales_data if record.get('date')]
+            if dates:
+                date_range_days = (max(dates) - min(dates)).days
+                if date_range_days < DAYS_TO_ANALYZE:
+                    logger.info(f"Недостаточно временного диапазона для ML-прогноза (< {DAYS_TO_ANALYZE} дней)")
+                    return False
+
+            if len(sales_data) < 2:
+                logger.info("Недостаточно записей для ML-прогноза (< 2 записей)")
+                return False
+
+            logger.info("Условия для ML-прогноза выполнены (ускоренный режим)")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Ошибка проверки условий ML-прогноза: {e}")
+            return False 
