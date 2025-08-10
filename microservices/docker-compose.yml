@@ -1,12 +1,8 @@
-version: '3.8'
-
 services:
   # Redis для кэширования
   redis:
     image: redis:7-alpine
     container_name: ozon-redis
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
     restart: unless-stopped
@@ -15,9 +11,6 @@ services:
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: ozon-rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
@@ -29,8 +22,6 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: ozon-postgres
-    ports:
-      - "5432:5432"
     environment:
       POSTGRES_DB: ozon_microservices
       POSTGRES_USER: ozon_user
