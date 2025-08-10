@@ -231,7 +231,7 @@ class StockTracker:
                 
                 # Если остатки не изменились и товар отсутствует - это день без остатков
                 elif prev_stock == curr_stock and curr_stock == 0:
-                    logger.info(f"День без остатков {sku}: 0 шт. на дату {curr_date}")
+                    logger.debug(f"День без остатков {sku}: 0 шт. на дату {curr_date}")
                     # НЕ добавляем в sales_data - нет товара для продажи
         
         conn.close()

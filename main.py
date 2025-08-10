@@ -139,17 +139,7 @@ async def main():
         
         logger.info(f"Получено {len(sales_data)} записей о продажах")
         
-        # Для тестирования: принудительно используем StockTracker
-        logger.info("=== ТЕСТИРОВАНИЕ: Принудительно используем StockTracker ===")
-        test_sales_data = stock_tracker.estimate_sales_from_stock_changes(days=1)
-        logger.info(f"StockTracker вернул {len(test_sales_data) if test_sales_data else 0} записей")
-        if test_sales_data:
-            unique_dates = set(record.get('date', '') for record in test_sales_data)
-            unique_skus = set(record.get('sku', '') for record in test_sales_data)
-            total_quantity = sum(record.get('quantity', 0) for record in test_sales_data)
-            logger.info(f"StockTracker данные: даты {sorted(unique_dates)}, SKU {len(unique_skus)}, общее количество {total_quantity}")
-            logger.info(f"Примеры данных StockTracker: {test_sales_data[:3]}")
-        logger.info("=== КОНЕЦ ТЕСТИРОВАНИЯ ===")
+        # Тестовый блок StockTracker удалён для продовой работы
         
         # Получаем данные об остатках
         logger.info("Получение данных об остатках...")
@@ -193,8 +183,15 @@ async def main():
             sales_df = calculator.prepare_sales_data(sales_data)
         stocks_df = calculator.prepare_stocks_data(stocks_data)
         
-        # Рассчитываем прогноз
-        forecast_data = calculator.calculate_forecast(sales_df, stocks_df)
+        # Проверяем, стоит ли использовать ML-прогноз
+        use_ml_forecast = calculator.should_use_ml_forecast(sales_data)
+        
+        if use_ml_forecast:
+            logger.info("Используем ML-улучшенный прогноз")
+            forecast_data = calculator.calculate_ml_enhanced_forecast(sales_data, stocks_data)
+        else:
+            logger.info("Используем базовый прогноз")
+            forecast_data = calculator.calculate_forecast(sales_df, stocks_df)
         
         if forecast_data.empty:
             logger.error("Не удалось рассчитать прогноз закупок")
