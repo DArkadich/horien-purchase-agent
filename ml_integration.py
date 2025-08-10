@@ -2,8 +2,9 @@
 Интеграция ML-моделей с основным прогнозированием (remote-only)
 """
 
+from __future__ import annotations
+
 import json
-import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -28,7 +29,20 @@ class MLForecastIntegration:
             if sales_df.empty:
                 return []
 
+            if 'date' not in sales_df.columns:
+                return []
+
+            # Приводим дату к datetime и отбрасываем некорректные
+            sales_df = sales_df.copy()
+            sales_df['date'] = pd.to_datetime(sales_df['date'], errors='coerce')
+            sales_df = sales_df.dropna(subset=['date'])
+            if sales_df.empty:
+                return []
+
             last_date = sales_df['date'].max()
+            if pd.isna(last_date):
+                return []
+
             future_dates = pd.date_range(start=last_date + timedelta(days=1), periods=forecast_days, freq='D')
 
             features: List[Dict[str, Any]] = []
@@ -37,19 +51,19 @@ class MLForecastIntegration:
             for date in future_dates:
                 base = {
                     'date': date.isoformat(),
-                    'day_of_week': date.dayofweek,
-                    'month': date.month,
-                    'day_of_month': date.day,
+                    'day_of_week': int(date.dayofweek),
+                    'month': int(date.month),
+                    'day_of_month': int(date.day),
                     'is_weekend': 1 if date.dayofweek in [5, 6] else 0,
                     'is_month_start': 1 if date.is_month_start else 0,
                     'is_month_end': 1 if date.is_month_end else 0,
-                    'quarter': date.quarter,
-                    'week_of_year': date.isocalendar().week
+                    'quarter': int(date.quarter),
+                    'week_of_year': int(date.isocalendar().week),
                 }
                 for sku in unique_skus:
                     row = dict(base)
                     if sku is not None:
-                        row['sku'] = sku
+                        row['sku'] = str(sku)
                     features.append(row)
 
             self.logger.info(f"Подготовлено {len(features)} признаков для ML")
@@ -131,7 +145,7 @@ class MLForecastIntegration:
         enhanced['days_until_stockout'] = np.where(
             enhanced['avg_daily_sales'] > 0,
             enhanced['available_stock'] / enhanced['avg_daily_sales'],
-            float('inf')
+            float('inf'),
         )
         enhanced['needs_purchase_short'] = enhanced['days_until_stockout'] < DAYS_FORECAST_SHORT
         enhanced['needs_purchase_long'] = enhanced['days_until_stockout'] < DAYS_FORECAST_LONG
@@ -139,15 +153,15 @@ class MLForecastIntegration:
             enhanced['needs_purchase_short'],
             np.maximum(
                 (DAYS_FORECAST_LONG - enhanced['days_until_stockout']) * enhanced['avg_daily_sales'],
-                enhanced['avg_daily_sales'] * DAYS_FORECAST_SHORT
+                enhanced['avg_daily_sales'] * DAYS_FORECAST_SHORT,
             ),
-            0
+            0,
         )
         enhanced['moq'] = enhanced['sku'].apply(get_moq_for_sku)
         enhanced['final_order_quantity'] = np.where(
             enhanced['recommended_quantity'] > 0,
             np.maximum(enhanced['recommended_quantity'], enhanced['moq']),
-            0
+            0,
         ).round().astype(int)
 
         self.logger.info(f"Прогноз улучшен с помощью удалённого ML для {len(enhanced)} SKU")
@@ -168,18 +182,18 @@ class MLForecastIntegration:
                 'total_skus': int(len(base)),
                 'skus_needing_purchase': int(len(base[base['needs_purchase_short']])) if not base.empty else 0,
                 'total_quantity': int(base['final_order_quantity'].sum()) if not base.empty else 0,
-                'avg_days_until_stockout': float(base['days_until_stockout'].mean()) if not base.empty else 0.0
+                'avg_days_until_stockout': float(base['days_until_stockout'].mean()) if not base.empty else 0.0,
             },
             'ml_enhanced_forecast': {
                 'total_skus': int(len(ml)),
                 'skus_needing_purchase': int(len(ml[ml['needs_purchase_short']])) if not ml.empty else 0,
                 'total_quantity': int(ml['final_order_quantity'].sum()) if not ml.empty else 0,
-                'avg_days_until_stockout': float(ml['days_until_stockout'].mean()) if not ml.empty else 0.0
-            }
+                'avg_days_until_stockout': float(ml['days_until_stockout'].mean()) if not ml.empty else 0.0,
+            },
         }
         improvements = {
             'quantity_difference': comparison['ml_enhanced_forecast']['total_quantity'] - comparison['base_forecast']['total_quantity'],
-            'purchase_items_difference': comparison['ml_enhanced_forecast']['skus_needing_purchase'] - comparison['base_forecast']['skus_needing_purchase']
+            'purchase_items_difference': comparison['ml_enhanced_forecast']['skus_needing_purchase'] - comparison['base_forecast']['skus_needing_purchase'],
         }
         comparison['improvements'] = improvements
         return comparison
@@ -194,9 +208,9 @@ class MLForecastIntegration:
             'ml_service_url': self.ml_service_url,
             'ml_models_status': status,
             'forecast_comparison': comparison,
-            'notes': []
+            'notes': [],
         }
-        if 'error' in status:
+        if isinstance(status, dict) and 'error' in status:
             report['notes'].append({'type': 'WARNING', 'message': f"ML service error: {status['error']}"})
 
         reports_dir = Path('reports')
