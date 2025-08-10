@@ -215,7 +215,6 @@ model_manager = ModelManager(redis_client)
 # ============================================================================
 
 @app.get("/health")
-@handle_service_error
 async def health_check():
     """Проверка здоровья сервиса"""
     return {
