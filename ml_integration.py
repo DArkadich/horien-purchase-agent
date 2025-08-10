@@ -21,7 +21,8 @@ class MLForecastIntegration:
     """Интеграция с удалённым ML-сервисом без локальных фоллбэков"""
 
     def __init__(self, ml_service_url: Optional[str] = None) -> None:
-        default_url = os.getenv("ML_SERVICE_URL", "http://localhost:8006")
+        # По умолчанию используем IPv4 loopback, чтобы избежать проблем c IPv6 (::1)
+        default_url = os.getenv("ML_SERVICE_URL", "http://127.0.0.1:8006")
         self.ml_service_url = ml_service_url or default_url
         self.logger = logger
 
