@@ -12,6 +12,7 @@ from typing import Dict, Any, Optional, List
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from contextlib import contextmanager
+from functools import wraps
 
 # ============================================================================
 # Конфигурация
@@ -353,7 +354,12 @@ class ServiceException(Exception):
         self.details = details or {}
 
 def handle_service_error(func):
-    """Декоратор для обработки ошибок сервисов"""
+    """Декоратор для обработки ошибок сервисов
+
+    Важно: используем @wraps, чтобы FastAPI видел исходную сигнатуру
+    и не требовал query-параметры args/kwargs (исправляет 422).
+    """
+    @wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
