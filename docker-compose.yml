@@ -9,4 +9,5 @@ services:
       - ./data:/app/data
     restart: unless-stopped
     environment:
-      - TZ=Europe/Moscow 
+      - TZ=Europe/Moscow
+      - ML_SERVICE_URL=http://host.docker.internal:8006

@@ -8,6 +8,7 @@ import json
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import os
 
 import numpy as np
 import pandas as pd
@@ -19,8 +20,9 @@ from config import logger
 class MLForecastIntegration:
     """Интеграция с удалённым ML-сервисом без локальных фоллбэков"""
 
-    def __init__(self, ml_service_url: str = "http://localhost:8006") -> None:
-        self.ml_service_url = ml_service_url
+    def __init__(self, ml_service_url: Optional[str] = None) -> None:
+        default_url = os.getenv("ML_SERVICE_URL", "http://localhost:8006")
+        self.ml_service_url = ml_service_url or default_url
         self.logger = logger
 
     def prepare_ml_features(self, sales_df: pd.DataFrame, forecast_days: int = 30) -> List[Dict[str, Any]]:
