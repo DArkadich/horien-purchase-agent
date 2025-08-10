@@ -157,6 +157,28 @@ services:
     networks:
       - ozon-network
 
+  # ML Service
+  ml-service:
+    build:
+      context: .
+      dockerfile: ml-service/Dockerfile
+    container_name: ozon-ml-service
+    ports:
+      - "8006:8006"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - POSTGRES_URL=postgresql://ozon_user:ozon_password@postgres:5432/ozon_microservices
+      - LOG_LEVEL=INFO
+      - SERVICE_NAME=ml-service
+    depends_on:
+      - redis
+      - rabbitmq
+      - postgres
+    restart: unless-stopped
+    networks:
+      - ozon-network
+
   # Nginx для балансировки нагрузки
   nginx:
     image: nginx:alpine

@@ -54,6 +54,12 @@ class MicroservicesManager:
                 'path': 'storage-service/main.py',
                 'description': 'Storage Service'
             }
+            ,
+            'ml-service': {
+                'port': 8006,
+                'path': 'ml-service/main.py',
+                'description': 'ML Service'
+            }
         }
         self.processes = {}
     
