@@ -260,6 +260,51 @@ class StorageStats(BaseModel):
     storage: Dict[str, Any] = {}
 
 # ============================================================================
+# ML Service Models
+# ============================================================================
+
+class ModelTrainingRequest(BaseModel):
+    """Запрос на обучение ML моделей"""
+    sales_data: List[Dict[str, Any]]
+
+class ModelTrainingResponse(BaseModel):
+    """Ответ обучения ML моделей"""
+    success: bool
+    message: str = None
+    results: Dict[str, Any] = {}
+    timestamp: str = None
+
+    @validator('timestamp', pre=True, always=True)
+    def _set_ts(cls, v):
+        return v or datetime.now().isoformat()
+
+class MLPredictionRequest(BaseModel):
+    """Запрос предсказаний ML"""
+    features: List[Dict[str, Any]]
+    sku: Optional[str] = None
+    steps: int = 30
+
+class MLPredictionResponse(BaseModel):
+    """Ответ предсказаний ML"""
+    success: bool
+    predictions: Dict[str, Any]
+    timestamp: str = None
+
+    @validator('timestamp', pre=True, always=True)
+    def _set_ts_pred(cls, v):
+        return v or datetime.now().isoformat()
+
+class ModelEvaluationResponse(BaseModel):
+    """Ответ оценки качества ML моделей"""
+    success: bool
+    evaluation: Dict[str, Any]
+    timestamp: str = None
+
+    @validator('timestamp', pre=True, always=True)
+    def _set_ts_eval(cls, v):
+        return v or datetime.now().isoformat()
+
+# ============================================================================
 # Enums для статусов и уровней
 # ============================================================================
 
