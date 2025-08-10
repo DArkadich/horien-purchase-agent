@@ -55,7 +55,7 @@ services:
       dockerfile: data-service/Dockerfile
     container_name: ozon-data-service
     ports:
-      - "8001:8001"
+      - "18001:8001"
     environment:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
