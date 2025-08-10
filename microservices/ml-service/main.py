@@ -145,7 +145,7 @@ class ModelManager:
                     model_info = model.train(sales_data)
                     results[name] = model_info
                     logger.info(f"Модель {name} обучена успешно")
-            except Exception as e:
+                except Exception as e:
                     logger.error(f"Ошибка обучения модели {name}: {e}")
                     results[name] = {'error': str(e)}
             
@@ -169,14 +169,14 @@ class ModelManager:
                 if model.is_trained:
                     try:
                         if name == 'sarima':
-                    if sku:
+                            if sku:
                                 pred = model.predict(sku, steps)
                             else:
                                 pred = model.predict_all(steps)
-                    else:
+                        else:
                             pred = model.predict(features)
                         predictions[name] = pred
-                except Exception as e:
+                    except Exception as e:
                         logger.error(f"Ошибка предсказания модели {name}: {e}")
                         predictions[name] = {'error': str(e)}
             
