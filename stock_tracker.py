@@ -164,15 +164,28 @@ class StockTracker:
         sales_data = []
         
         for sku in skus:
-            # Получаем историю остатков для этого SKU
+            # Получаем историю остатков для этого SKU с учётом времени создания записи
+            # Берём последнее значение за день (по created_at) для корректной дневной динамики
             cursor.execute('''
-                SELECT date, stock 
-                FROM stock_history 
+                SELECT date, stock, created_at
+                FROM stock_history
                 WHERE sku = ? AND date >= ?
-                ORDER BY date ASC
+                ORDER BY date ASC, datetime(created_at) ASC
             ''', (sku, start_date))
-            
-            stock_history = cursor.fetchall()
+
+            raw_rows = cursor.fetchall()
+
+            # Дедупликация по дате: оставляем последнюю запись дня
+            latest_by_date: Dict[str, Dict[str, Any]] = {}
+            for row in raw_rows:
+                d, stock_value, created = row[0], row[1], row[2]
+                latest_by_date[d] = {
+                    'date': d,
+                    'stock': stock_value,
+                    'created_at': created
+                }
+
+            stock_history = [(v['date'], v['stock']) for v in sorted(latest_by_date.values(), key=lambda x: x['date'])]
             
             logger.info(f"Анализ SKU {sku}: найдено {len(stock_history)} записей об остатках")
             
@@ -183,7 +196,7 @@ class StockTracker:
             # Показываем историю остатков для отладки
             logger.info(f"SKU {sku} история остатков: {stock_history}")
             
-            # Анализируем изменения остатков
+            # Анализируем изменения остатков между уникальными днями
             for i in range(1, len(stock_history)):
                 prev_date, prev_stock = stock_history[i-1]
                 curr_date, curr_stock = stock_history[i]
@@ -205,14 +218,9 @@ class StockTracker:
                     })
                     logger.info(f"ПРОДАЖА {sku}: {sold_quantity} шт. ({prev_stock} -> {curr_stock}) на дату {curr_date}")
                 
-                # Если остатки не изменились и товар был в наличии - это день без продаж
+                # Если остатки не изменились и товар был в наличии - день без продаж (учитываем для статистики, но не раздуваем записи)
                 elif prev_stock == curr_stock and curr_stock > 0:
-                    sales_data.append({
-                        "sku": sku,
-                        "date": curr_date,
-                        "quantity": 0,
-                        "revenue": 0
-                    })
+                    # Не добавляем запись в sales_data, чтобы не раздувать нулевые продажи
                     logger.info(f"День без продаж {sku}: {curr_stock} шт. на дату {curr_date}")
                 
                 # Если остатки увеличились - это поставка, НЕ учитываем как продажи
