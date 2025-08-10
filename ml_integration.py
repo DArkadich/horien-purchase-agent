@@ -466,18 +466,20 @@ class MLForecastIntegration:
                         'priority': 'HIGH'
                     })
             
-            # Проверяем качество ML-моделей
-            if 'status' in ml_status:
-                status = ml_status['status']
-                trained_models = [name for name, info in status.items() 
-                                if info.get('trained', False)]
-                
+            # Проверяем качество ML-моделей (учёт локального фоллбэка)
+            status_info = ml_status.get('status') if isinstance(ml_status, dict) else None
+            if isinstance(status_info, dict):
+                trained_models = [name for name, info in status_info.items() 
+                                  if isinstance(info, dict) and info.get('trained', False)]
                 if len(trained_models) < 2:
                     report['recommendations'].append({
                         'type': 'MODEL_TRAINING',
                         'message': f"Рекомендуется обучить больше ML-моделей. Обучено: {len(trained_models)}",
                         'priority': 'LOW'
                     })
+            else:
+                # В локальном фоллбэке или при недоступности сервиса не формируем рекомендацию по обучению
+                pass
             
             self.logger.info("ML-отчет о прогнозе сгенерирован")
             return report
