@@ -440,6 +440,5 @@ if __name__ == "__main__":
         "main:app",
         host="0.0.0.0",
         port=8006,
-        reload=True,
         log_level=config['log_level'].lower()
     ) 
