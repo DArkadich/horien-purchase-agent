@@ -11,8 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копируем код
 COPY shared/ ./shared/
 COPY notification-service/ ./notification-service/
-COPY telegram_notify.py ./
-COPY config.py ./
+
 
 # Создаем пользователя для безопасности
 RUN useradd --create-home --shell /bin/bash app && \

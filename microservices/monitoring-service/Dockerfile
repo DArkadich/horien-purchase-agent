@@ -11,10 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копируем код
 COPY shared/ ./shared/
 COPY monitoring-service/ ./monitoring-service/
-COPY api_monitor.py ./
-COPY api_metrics.py ./
-COPY ozon_api.py ./
-COPY config.py ./
+
 
 # Создаем пользователя для безопасности
 RUN useradd --create-home --shell /bin/bash app && \

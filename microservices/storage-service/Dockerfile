@@ -11,8 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копируем код
 COPY shared/ ./shared/
 COPY storage-service/ ./storage-service/
-COPY sheets.py ./
-COPY config.py ./
+
 
 # Создаем пользователя для безопасности
 RUN useradd --create-home --shell /bin/bash app && \
