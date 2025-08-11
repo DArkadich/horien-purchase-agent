@@ -10,7 +10,8 @@ services:
     restart: unless-stopped
     environment:
       - TZ=Europe/Moscow
-      - ML_SERVICE_URL=http://ml-service:8006
+      - ML_SERVICE_URL=http://ozon-ml-service:8006
+      - ENABLE_ML=true
     networks:
       - microservices_ozon-network
 
