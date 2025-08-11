@@ -36,6 +36,12 @@ DAYS_FORECAST_LONG = int(os.getenv('DAYS_FORECAST_LONG', 45))
 # Настройки анализа продаж
 SALES_HISTORY_DAYS = int(os.getenv('SALES_HISTORY_DAYS', 180))
 
+# Политики работы
+# Требовать реальные продажи из API (не использовать оценку продаж из изменений остатков)
+ALLOW_SALES_FALLBACK = os.getenv('ALLOW_SALES_FALLBACK', 'false').lower() == 'true'
+# Разрешить использование удалённого ML-сервиса
+ENABLE_ML = os.getenv('ENABLE_ML', 'false').lower() == 'true'
+
 # Периоды анализа данных
 DAYS_TO_ANALYZE = 2  # Период анализа данных (изменено с 7 на 2 дня для быстрого тестирования)
 

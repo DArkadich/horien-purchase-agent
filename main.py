@@ -106,37 +106,11 @@ async def main():
         else:
             logger.warning("Нет данных об остатках для сохранения")
         
-        # Получаем данные о продажах из API с кэшированием
-        logger.info("Получение данных о продажах из API...")
+        # Оцениваем продажи по изменению остатков (Ozon не отдаёт продажи в штуках)
+        logger.info("Оценка продаж по изменению остатков...")
         from config import SALES_HISTORY_DAYS
-        sales_data = cached_api.get_sales_data_with_cache(days=SALES_HISTORY_DAYS)
-        
-        logger.info(f"API вернул {len(sales_data) if sales_data else 0} записей о продажах")
-        
-        if not sales_data:
-            logger.warning("Нет данных о продажах из API, используем оценку из изменений остатков")
-            # Fallback: используем оценку из изменений остатков
-            sales_data = stock_tracker.estimate_sales_from_stock_changes(days=SALES_HISTORY_DAYS)
-            
-            # Если все еще нет данных, пробуем с меньшим периодом
-            if not sales_data:
-                logger.warning("Нет данных за 180 дней, пробуем с доступными данными")
-                sales_data = stock_tracker.estimate_sales_from_stock_changes(days=30)  # Пробуем 30 дней
-                
-                if not sales_data:
-                    logger.warning("Нет данных за 30 дней, используем все доступные данные")
-                    sales_data = stock_tracker.estimate_sales_from_stock_changes(days=1)  # Используем все данные
-        else:
-            logger.info("Используем данные о продажах из API")
-            # Добавляем отладочную информацию о данных из API
-            if sales_data:
-                unique_dates = set(record.get('date', '') for record in sales_data)
-                unique_skus = set(record.get('sku', '') for record in sales_data)
-                total_quantity = sum(record.get('quantity', 0) for record in sales_data)
-                logger.info(f"Данные из API: даты {sorted(unique_dates)}, SKU {len(unique_skus)}, общее количество {total_quantity}")
-                logger.info(f"Примеры данных из API: {sales_data[:3]}")
-        
-        logger.info(f"Получено {len(sales_data)} записей о продажах")
+        sales_data = stock_tracker.estimate_sales_from_stock_changes(days=SALES_HISTORY_DAYS)
+        logger.info(f"Получено {len(sales_data)} записей о продажах (оценка по остаткам)")
         
         # Тестовый блок StockTracker удалён для продовой работы
         
@@ -183,7 +157,8 @@ async def main():
         stocks_df = calculator.prepare_stocks_data(stocks_data)
         
         # Проверяем, стоит ли использовать ML-прогноз
-        use_ml_forecast = calculator.should_use_ml_forecast(sales_data)
+        from config import ENABLE_ML
+        use_ml_forecast = ENABLE_ML and calculator.should_use_ml_forecast(sales_data)
         
         if use_ml_forecast:
             logger.info("Используем ML-улучшенный прогноз")
