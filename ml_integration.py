@@ -25,6 +25,34 @@ class MLForecastIntegration:
         default_url = os.getenv("ML_SERVICE_URL", "http://ozon-ml-service:8006")
         self.ml_service_url = ml_service_url or default_url
         self.logger = logger
+        # Конфигурируемые пути эндпоинтов (могут отличаться у сервиса)
+        self.status_paths = [
+            p for p in [
+                os.getenv("ML_STATUS_PATH"),
+                "/models/status",
+                "/status",
+                "/health",
+                "/api/status",
+                "/api/health",
+            ] if p
+        ]
+        self.predict_paths = [
+            p for p in [
+                os.getenv("ML_PREDICT_PATH"),
+                "/models/predict",
+                "/predict",
+                "/api/predict",
+                "/forecast",
+            ] if p
+        ]
+        self.train_paths = [
+            p for p in [
+                os.getenv("ML_TRAIN_PATH"),
+                "/models/train",
+                "/train",
+                "/api/train",
+            ] if p
+        ]
 
     # ========= Helpers: readiness =========
     def _is_status_ready(self, status: Dict[str, Any]) -> bool:
@@ -123,7 +151,7 @@ class MLForecastIntegration:
     def train_ml_models(self, sales_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Отправляет данные на обучение в удалённый сервис"""
         try:
-            endpoints = ["/models/train", "/train"]
+            endpoints = list(self.train_paths)
             last_error = None
             for ep in endpoints:
                 try:
@@ -131,8 +159,10 @@ class MLForecastIntegration:
                     if resp.status_code == 200:
                         return resp.json()
                     last_error = f"HTTP {resp.status_code}: {resp.text}"
+                    self.logger.warning(f"ML train fallback next (path {ep} failed): {last_error}")
                 except Exception as exc:
                     last_error = str(exc)
+                    self.logger.warning(f"ML train exception on {ep}: {last_error}")
             return {'error': last_error or 'train endpoint failed'}
         except Exception as exc:
             return {'error': str(exc)}
@@ -141,7 +171,7 @@ class MLForecastIntegration:
         """Запрашивает предсказания у удалённого сервиса"""
         try:
             payload = {'features': features, 'sku': sku, 'steps': steps}
-            endpoints = ["/models/predict", "/predict"]
+            endpoints = list(self.predict_paths)
             last_error = None
             for ep in endpoints:
                 try:
@@ -161,8 +191,10 @@ class MLForecastIntegration:
                         # Оставляем как есть — обработаем далее
                         return {'predictions': data}
                     last_error = f"HTTP {resp.status_code}: {resp.text}"
+                    self.logger.warning(f"ML predict fallback next (path {ep} failed): {last_error}")
                 except Exception as exc:
                     last_error = str(exc)
+                    self.logger.warning(f"ML predict exception on {ep}: {last_error}")
             return {'error': last_error or 'predict endpoint failed'}
         except Exception as exc:
             return {'error': str(exc)}
@@ -170,7 +202,7 @@ class MLForecastIntegration:
     def get_ml_model_status(self) -> Dict[str, Any]:
         """Статус обученности/готовности моделей на удалённом сервисе"""
         try:
-            endpoints = ["/models/status", "/status", "/health"]
+            endpoints = list(self.status_paths)
             last_error = None
             for ep in endpoints:
                 try:
@@ -178,8 +210,10 @@ class MLForecastIntegration:
                     if resp.status_code == 200:
                         return resp.json()
                     last_error = f"HTTP {resp.status_code}: {resp.text}"
+                    self.logger.warning(f"ML status fallback next (path {ep} failed): {last_error}")
                 except Exception as exc:
                     last_error = str(exc)
+                    self.logger.warning(f"ML status exception on {ep}: {last_error}")
             return {'error': last_error or 'status endpoint failed'}
         except Exception as exc:
             return {'error': str(exc)}
