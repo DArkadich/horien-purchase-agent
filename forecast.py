@@ -781,17 +781,17 @@ class PurchaseForecast:
             return {}
         
         analytics = {
-            'total_skus': len(forecast_df),
-            'skus_needing_purchase': len(forecast_df[forecast_df['needs_purchase_short']]),
-            'skus_critical': len(forecast_df[forecast_df['days_until_stockout'] < DAYS_TO_ANALYZE]),
-            'skus_urgent': len(forecast_df[forecast_df['days_until_stockout'] < 14]),
+            'total_items': len(forecast_df),
+            'high_priority_count': int((forecast_df['days_until_stockout'] < 10).sum()),
+            'medium_priority_count': int(((forecast_df['days_until_stockout'] >= 10) & (forecast_df['days_until_stockout'] < 20)).sum()),
+            'low_priority_count': int((forecast_df['days_until_stockout'] >= 20).sum()),
             'total_recommended_quantity': int(forecast_df['final_order_quantity'].sum()),
-            'avg_days_until_stockout': round(forecast_df['days_until_stockout'].mean(), 1),
+            'avg_days_until_stockout': round(float(forecast_df['days_until_stockout'].mean()), 1),
             'quality_distribution': forecast_df['forecast_quality'].value_counts().to_dict(),
             'stock_levels': {
-                'low_stock': len(forecast_df[forecast_df['available_stock'] < 10]),
-                'medium_stock': len(forecast_df[(forecast_df['available_stock'] >= 10) & (forecast_df['available_stock'] < 50)]),
-                'high_stock': len(forecast_df[forecast_df['available_stock'] >= 50])
+                'low_stock': int((forecast_df['available_stock'] < 10).sum()),
+                'medium_stock': int(((forecast_df['available_stock'] >= 10) & (forecast_df['available_stock'] < 50)).sum()),
+                'high_stock': int((forecast_df['available_stock'] >= 50).sum())
             }
         }
         

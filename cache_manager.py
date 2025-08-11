@@ -83,9 +83,18 @@ class CacheManager:
             True если успешно сохранено, False иначе
         """
         try:
+            # Валидация TTL
+            if ttl_hours is None:
+                return False
+            try:
+                ttl_hours_val = float(ttl_hours)
+            except Exception:
+                return False
+            if ttl_hours_val <= 0:
+                return False
             key_hash = self._get_cache_key_hash(cache_key)
             cache_file = self._get_cache_file_path(cache_key)
-            expires_at = datetime.now() + timedelta(hours=ttl_hours)
+            expires_at = datetime.now() + timedelta(hours=ttl_hours_val)
             
             # Сохраняем данные в файл
             with open(cache_file, 'wb') as f:
@@ -308,6 +317,8 @@ class CachedAPIClient:
     def __init__(self, api_client, cache_manager: CacheManager):
         self.api_client = api_client
         self.cache_manager = cache_manager
+        # Флаг для отключения кэша в тестах/окружении
+        self.cache_enabled = True
     
     def get_products_with_cache(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
         """
@@ -316,7 +327,7 @@ class CachedAPIClient:
         cache_key = "products_list"
         
         # Проверяем кэш если не принудительное обновление
-        if not force_refresh:
+        if self.cache_enabled and not force_refresh:
             cached_data = self.cache_manager.get_cache(cache_key)
             if cached_data:
                 logger.info("Используем кэшированные данные о товарах")
@@ -326,7 +337,7 @@ class CachedAPIClient:
         logger.info("Получение свежих данных о товарах")
         fresh_data = self.api_client.get_products()
         
-        if fresh_data:
+        if self.cache_enabled and fresh_data:
             # Сохраняем в кэш на 2 часа
             self.cache_manager.set_cache(cache_key, fresh_data, "products", ttl_hours=CACHE_TTL_PRODUCTS)
             logger.info("Свежие данные о товарах сохранены в кэш")
@@ -340,7 +351,7 @@ class CachedAPIClient:
         cache_key = f"sales_data_{days}days"
         
         # Проверяем кэш если не принудительное обновление
-        if not force_refresh:
+        if self.cache_enabled and not force_refresh:
             cached_data = self.cache_manager.get_cache(cache_key)
             if cached_data:
                 logger.info("Используем кэшированные данные о продажах")
@@ -350,7 +361,7 @@ class CachedAPIClient:
         logger.info("Получение свежих данных о продажах")
         fresh_data = self.api_client.get_sales_data(days)
         
-        if fresh_data:
+        if self.cache_enabled and fresh_data:
             # Сохраняем в кэш на 1 час
             self.cache_manager.set_cache(cache_key, fresh_data, "sales", ttl_hours=CACHE_TTL_SALES)
             logger.info("Свежие данные о продажах сохранены в кэш")
@@ -364,7 +375,7 @@ class CachedAPIClient:
         cache_key = "stocks_data"
         
         # Проверяем кэш если не принудительное обновление
-        if not force_refresh:
+        if self.cache_enabled and not force_refresh:
             cached_data = self.cache_manager.get_cache(cache_key)
             if cached_data:
                 logger.info("Используем кэшированные данные об остатках")
@@ -374,7 +385,7 @@ class CachedAPIClient:
         logger.info("Получение свежих данных об остатках")
         fresh_data = self.api_client.get_stocks_data()
         
-        if fresh_data:
+        if self.cache_enabled and fresh_data:
             # Сохраняем в кэш на 30 минут
             self.cache_manager.set_cache(cache_key, fresh_data, "stocks", ttl_hours=CACHE_TTL_STOCKS)
             logger.info("Свежие данные об остатках сохранены в кэш")
@@ -388,7 +399,7 @@ class CachedAPIClient:
         cache_key = f"analytics_data_{days}days"
         
         # Проверяем кэш если не принудительное обновление
-        if not force_refresh:
+        if self.cache_enabled and not force_refresh:
             cached_data = self.cache_manager.get_cache(cache_key)
             if cached_data:
                 logger.info("Используем кэшированные аналитические данные")
@@ -398,7 +409,7 @@ class CachedAPIClient:
         logger.info("Получение свежих аналитических данных")
         fresh_data = self.api_client.get_analytics_data(days)
         
-        if fresh_data:
+        if self.cache_enabled and fresh_data:
             # Сохраняем в кэш на 1 час
             self.cache_manager.set_cache(cache_key, fresh_data, "analytics", ttl_hours=CACHE_TTL_ANALYTICS)
             logger.info("Свежие аналитические данные сохранены в кэш")
