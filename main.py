@@ -100,9 +100,8 @@ async def main():
             stock_tracker.save_stock_data(current_stocks)
             logger.info(f"Сохранено {len(current_stocks)} записей об остатках")
             
-            # Очистка синтетических данных и запись реальных остатков
-            logger.info("Очистка синтетических данных и запись реальных остатков...")
-            sheets.clear_all_synthetic_data()
+            # Запись реальных остатков
+            logger.info("Запись реальных остатков...")
             sheets.write_stock_data(current_stocks)
         else:
             logger.warning("Нет данных об остатках для сохранения")

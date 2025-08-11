@@ -17,45 +17,8 @@ class GoogleSheets:
         self.spreadsheet_id = GOOGLE_SPREADSHEET_ID
         self.credentials = None
         self.service = None
-        # В тестовой среде допускаем отсутствие реальной аутентификации
-        try:
-            self._authenticate()
-        except Exception:
-            # Создаем легковесные заглушки, чтобы тесты могли мокать вызовы
-            class _DummyValues:
-                def get(self, **kwargs):
-                    class _Resp:
-                        def execute(self_inner):
-                            return {'values': []}
-                    return _Resp()
-                def update(self, **kwargs):
-                    class _Resp:
-                        def execute(self_inner):
-                            return {'updatedCells': 0}
-                    return _Resp()
-                def clear(self, **kwargs):
-                    class _Resp:
-                        def execute(self_inner):
-                            return {}
-                    return _Resp()
-            class _DummySpreadsheets:
-                def get(self, **kwargs):
-                    class _Resp:
-                        def execute(self_inner):
-                            return {'sheets': [{'properties': {'title': 'Sheet1'}}, {'properties': {'title': 'Summary'}}, {'properties': {'title': 'Stocks'}}]}
-                    return _Resp()
-                def values(self):
-                    return _DummyValues()
-                def batchUpdate(self, **kwargs):
-                    class _Resp:
-                        def execute(self_inner):
-                            return {}
-                    return _Resp()
-            class _DummyService:
-                def spreadsheets(self_inner):
-                    return _DummySpreadsheets()
-            self.service = _DummyService()
-            logger.warning("Работаем в упрощенном режиме GoogleSheets без реальной аутентификации")
+        # Продовый режим: требуем реальную аутентификацию
+        self._authenticate()
     
     def _authenticate(self):
         """
