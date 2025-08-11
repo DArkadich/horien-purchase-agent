@@ -12,10 +12,9 @@ services:
       - TZ=Europe/Moscow
       - ML_SERVICE_URL=http://ozon-ml-service:8006
       - ENABLE_ML=true
-      # Переопределите пути эндпоинтов при отличиях
-      # - ML_STATUS_PATH=/health
-      # - ML_PREDICT_PATH=/forecast
-      # - ML_TRAIN_PATH=/train
+      - ML_STATUS_PATH=/models/status
+      - ML_PREDICT_PATH=/models/predict
+      - ML_TRAIN_PATH=/models/train
     networks:
       - microservices_ozon-network
 
