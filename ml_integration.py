@@ -78,8 +78,17 @@ class MLForecastIntegration:
     def train_ml_models(self, sales_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Отправляет данные на обучение в удалённый сервис"""
         try:
-            resp = requests.post(f"{self.ml_service_url}/models/train", json={'sales_data': sales_data}, timeout=300)
-            return resp.json() if resp.status_code == 200 else {'error': resp.text}
+            endpoints = ["/models/train", "/train"]
+            last_error = None
+            for ep in endpoints:
+                try:
+                    resp = requests.post(f"{self.ml_service_url}{ep}", json={'sales_data': sales_data}, timeout=300)
+                    if resp.status_code == 200:
+                        return resp.json()
+                    last_error = f"HTTP {resp.status_code}: {resp.text}"
+                except Exception as exc:
+                    last_error = str(exc)
+            return {'error': last_error or 'train endpoint failed'}
         except Exception as exc:
             return {'error': str(exc)}
 
@@ -87,16 +96,46 @@ class MLForecastIntegration:
         """Запрашивает предсказания у удалённого сервиса"""
         try:
             payload = {'features': features, 'sku': sku, 'steps': steps}
-            resp = requests.post(f"{self.ml_service_url}/models/predict", json=payload, timeout=60)
-            return resp.json() if resp.status_code == 200 else {'error': resp.text}
+            endpoints = ["/models/predict", "/predict"]
+            last_error = None
+            for ep in endpoints:
+                try:
+                    resp = requests.post(f"{self.ml_service_url}{ep}", json=payload, timeout=60)
+                    if resp.status_code == 200:
+                        # Нормализуем ответ к виду {'predictions': ...}
+                        try:
+                            data = resp.json()
+                        except Exception:
+                            return {'error': f"Invalid JSON in response: {resp.text[:200]}"}
+                        if isinstance(data, dict) and 'predictions' in data:
+                            return data
+                        if isinstance(data, list):
+                            return {'predictions': data}
+                        if isinstance(data, dict) and 'result' in data and isinstance(data['result'], dict) and 'predictions' in data['result']:
+                            return {'predictions': data['result']['predictions']}
+                        # Оставляем как есть — обработаем далее
+                        return {'predictions': data}
+                    last_error = f"HTTP {resp.status_code}: {resp.text}"
+                except Exception as exc:
+                    last_error = str(exc)
+            return {'error': last_error or 'predict endpoint failed'}
         except Exception as exc:
             return {'error': str(exc)}
 
     def get_ml_model_status(self) -> Dict[str, Any]:
         """Статус обученности/готовности моделей на удалённом сервисе"""
         try:
-            resp = requests.get(f"{self.ml_service_url}/models/status", timeout=10)
-            return resp.json() if resp.status_code == 200 else {'error': resp.text}
+            endpoints = ["/models/status", "/status", "/health"]
+            last_error = None
+            for ep in endpoints:
+                try:
+                    resp = requests.get(f"{self.ml_service_url}{ep}", timeout=10)
+                    if resp.status_code == 200:
+                        return resp.json()
+                    last_error = f"HTTP {resp.status_code}: {resp.text}"
+                except Exception as exc:
+                    last_error = str(exc)
+            return {'error': last_error or 'status endpoint failed'}
         except Exception as exc:
             return {'error': str(exc)}
 
@@ -110,9 +149,15 @@ class MLForecastIntegration:
             self.logger.warning("Не удалось подготовить признаки для удалённого ML")
             return forecast_df
 
+        # Проверим статус сервиса перед предсказаниями
+        status = self.get_ml_model_status()
+        if isinstance(status, dict) and 'error' in status:
+            self.logger.warning(f"Удалённый ML недоступен (status): {status['error']}")
+            return forecast_df
+        
         predictions = self.get_ml_predictions(features)
         if 'error' in predictions:
-            self.logger.warning(f"Удалённый ML недоступен: {predictions['error']}")
+            self.logger.warning(f"Удалённый ML недоступен (predict): {predictions['error']}")
             return forecast_df
 
         enhanced = forecast_df.copy()
@@ -137,6 +182,27 @@ class MLForecastIntegration:
                 sku_preds = [linear_pred[j] for j, f in enumerate(features) if f.get('sku') == sku and j < len(linear_pred)]
                 if sku_preds:
                     ml_avg = float(np.mean(sku_preds))
+                    original_avg = float(row['avg_daily_sales'])
+                    enhanced.loc[i, 'avg_daily_sales'] = 0.6 * ml_avg + 0.4 * original_avg
+                    enhanced.loc[i, 'forecast_quality'] = 'ML_ENHANCED'
+        # Список предсказаний в порядке features
+        elif isinstance(preds, list) and all(isinstance(v, (int, float)) for v in preds):
+            for i, row in enhanced.iterrows():
+                sku = row['sku']
+                sku_indices = [j for j, f in enumerate(features) if f.get('sku') == sku]
+                sku_preds = [preds[j] for j in sku_indices if j < len(preds)]
+                if sku_preds:
+                    ml_avg = float(np.mean(sku_preds))
+                    original_avg = float(row['avg_daily_sales'])
+                    enhanced.loc[i, 'avg_daily_sales'] = 0.6 * ml_avg + 0.4 * original_avg
+                    enhanced.loc[i, 'forecast_quality'] = 'ML_ENHANCED'
+        # Словарь sku -> список значений
+        elif isinstance(preds, dict) and all(isinstance(k, (str, int)) for k in preds.keys()):
+            for i, row in enhanced.iterrows():
+                sku = str(row['sku'])
+                sku_values = preds.get(sku)
+                if isinstance(sku_values, list) and sku_values:
+                    ml_avg = float(np.mean([v for v in sku_values if isinstance(v, (int, float))]))
                     original_avg = float(row['avg_daily_sales'])
                     enhanced.loc[i, 'avg_daily_sales'] = 0.6 * ml_avg + 0.4 * original_avg
                     enhanced.loc[i, 'forecast_quality'] = 'ML_ENHANCED'
