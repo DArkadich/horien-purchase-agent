@@ -26,6 +26,51 @@ class MLForecastIntegration:
         self.ml_service_url = ml_service_url or default_url
         self.logger = logger
 
+    # ========= Helpers: readiness =========
+    def _is_status_ready(self, status: Dict[str, Any]) -> bool:
+        """Определяет, что ML-сервис готов к предсказаниям."""
+        if not isinstance(status, dict):
+            return False
+        if 'error' in status:
+            return False
+        # Унифицированные признаки готовности
+        ready_flags = [
+            str(status.get('status', '')).lower() in {'ok', 'ready', 'healthy'},
+            bool(status.get('ready')),  # true/false
+            bool(status.get('trained')),  # true/false
+            str(status.get('health', '')).lower() == 'ok',
+        ]
+        return any(ready_flags)
+
+    def wait_until_ready(self, max_wait_seconds: int = 60, poll_interval: int = 3,
+                          sales_data: Optional[List[Dict[str, Any]]] = None) -> bool:
+        """Ожидает готовность ML-сервиса; при необходимости инициирует обучение.
+
+        Возвращает True, если сервис готов, иначе False.
+        """
+        elapsed = 0
+        status = self.get_ml_model_status()
+        if not self._is_status_ready(status) and sales_data:
+            self.logger.info("ML-сервис не готов — запускаем обучение моделей...")
+            train_result = self.train_ml_models(sales_data)
+            if 'error' in train_result:
+                self.logger.warning(f"Ошибка обучения моделей: {train_result['error']}")
+
+        while elapsed <= max_wait_seconds:
+            status = self.get_ml_model_status()
+            if self._is_status_ready(status):
+                self.logger.info("ML-сервис готов к предсказаниям")
+                return True
+            self.logger.info(f"ML-сервис не готов, повторная проверка через {poll_interval}с...")
+            try:
+                import time
+                time.sleep(poll_interval)
+            except Exception:
+                pass
+            elapsed += poll_interval
+        self.logger.warning("Таймаут ожидания готовности ML-сервиса")
+        return False
+
     def prepare_ml_features(self, sales_df: pd.DataFrame, forecast_days: int = 30) -> List[Dict[str, Any]]:
         """Готовит признаки для будущих дат по всем SKU"""
         try:
@@ -143,6 +188,9 @@ class MLForecastIntegration:
         """Улучшает среднюю дневную продажу по SKU на основе предсказаний удалённого сервиса"""
         if forecast_df.empty:
             return forecast_df
+
+        # Убеждаемся, что сервис готов (при необходимости обучаем)
+        self.wait_until_ready(max_wait_seconds=60, poll_interval=3, sales_data=sales_data)
 
         features = self.prepare_ml_features(pd.DataFrame(sales_data), forecast_days=30)
         if not features:

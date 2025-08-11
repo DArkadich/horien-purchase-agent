@@ -162,6 +162,7 @@ async def main():
         
         if use_ml_forecast:
             logger.info("Используем ML-улучшенный прогноз")
+            # Попытка обучения/готовности выполняется внутри ML-интеграции
             forecast_data = calculator.calculate_ml_enhanced_forecast(sales_data, stocks_data)
         else:
             logger.info("Используем базовый прогноз")
